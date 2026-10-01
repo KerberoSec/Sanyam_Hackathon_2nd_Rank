@@ -1,46 +1,49 @@
-# 🚀 HabitFlow - Your Personal Habit Tracker
+# HabitFlow: Personal Habit Tracker
 
-Build better habits, one day at a time. HabitFlow is a beautiful, polished habit tracking application that combines gamification, analytics, and emotional UX to help you achieve consistency and personal growth.
+Build better habits, one day at a time. HabitFlow is a polished habit tracking application that combines gamification, analytics, and thoughtful user experience to help you achieve consistency and personal growth.
 
-## ✨ Features
+## Features
 
-- **🔥 Streak Tracking**: Watch your streaks grow and celebrate consistency
-- **📊 Analytics Dashboard**: Deep insights into your habits and patterns
-- **🎮 Gamification**: Earn XP, unlock badges, and climb levels
-- **😊 Mood Tracking**: Connect your habits with emotional wellbeing
-- **🤖 Smart Coach**: Personalized insights and motivational messages
-- **📱 Fully Responsive**: Works beautifully on desktop, tablet, and mobile
-- **🌙 Dark Mode**: Easy on the eyes, any time of day
-- **✨ Smooth Animations**: Delightful interactions and confetti celebrations
+* **Streak Tracking**: Monitor your streaks and celebrate consistency
+* **Analytics Dashboard**: Detailed insights into your habits and patterns
+* **Gamification**: Earn XP, unlock badges, and advance through levels
+* **Mood Tracking**: Connect your habits with emotional wellbeing
+* **Smart Coach**: Personalized insights and motivational messages
+* **Fully Responsive**: Works on desktop, tablet, and mobile devices
+* **Dark Mode**: Comfortable viewing at any time of day
+* **Smooth Animations**: Polished interactions and confetti celebrations
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 ### Backend
-- **Python 3.9+**
-- **Flask** - Web framework
-- **Flask-SQLAlchemy** - ORM
-- **Flask-JWT-Extended** - JWT authentication
-- **MySQL** - Database
-- **Flask-CORS** - Cross-origin requests
+
+* **Python 3.9+**
+* **Flask**: Web framework
+* **Flask SQLAlchemy**: ORM
+* **Flask JWT Extended**: JWT authentication
+* **MySQL**: Database
+* **Flask CORS**: Cross origin requests
 
 ### Frontend
-- **HTML5** - Markup
-- **Bootstrap 5** - CSS framework
-- **Chart.js** - Analytics charts
-- **Vanilla JavaScript** - Interactivity
-- **Canvas Confetti** - Celebrations
 
-## 📦 Installation
+* **HTML5**: Markup
+* **Bootstrap 5**: CSS framework
+* **Chart.js**: Analytics charts
+* **Vanilla JavaScript**: Interactivity
+* **Canvas Confetti**: Celebrations
+
+## Installation
 
 ### Prerequisites
-- Python 3.9 or higher
-- MySQL 5.7 or higher
-- Git
+
+* Python 3.9 or higher
+* MySQL 5.7 or higher
+* Git
 
 ### Step 1: Clone and Setup
 
 ```bash
-cd habit-tracker
+cd habit_tracker
 python -m venv venv
 
 # On Windows
@@ -56,7 +59,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Step 3: Configure Database
+### Step 3: Configure Environment
 
 Create a `.env` file in the project root:
 
@@ -64,8 +67,8 @@ Create a `.env` file in the project root:
 FLASK_ENV=development
 FLASK_APP=app.py
 DATABASE_URL=mysql+pymysql://root:password@localhost/habit_tracker
-JWT_SECRET_KEY=your-secret-key-here-change-in-production
-SECRET_KEY=your-app-secret-key-here
+JWT_SECRET_KEY=your_secret_key_here_change_in_production
+SECRET_KEY=your_app_secret_key_here
 ```
 
 ### Step 4: Create MySQL Database
@@ -85,11 +88,11 @@ flask shell
 >>>
 >>> # Create default badges
 >>> default_badges = [
-...     Badge(name='First Week', description='Complete a habit for 7 days straight', icon='🔥'),
-...     Badge(name='Two Weeks Strong', description='Complete a habit for 14 days straight', icon='💪'),
-...     Badge(name='Monthly Master', description='Complete a habit for 30 days straight', icon='👑'),
-...     Badge(name='Centennial', description='Complete 100 habit logs', icon='💯'),
-...     Badge(name='Yearly Champion', description='Complete 365 habit logs', icon='🎯'),
+...     Badge(name='First Week', description='Complete a habit for 7 days straight', icon='flame'),
+...     Badge(name='Two Weeks Strong', description='Complete a habit for 14 days straight', icon='strength'),
+...     Badge(name='Monthly Master', description='Complete a habit for 30 days straight', icon='crown'),
+...     Badge(name='Centennial', description='Complete 100 habit logs', icon='hundred'),
+...     Badge(name='Yearly Champion', description='Complete 365 habit logs', icon='target'),
 ... ]
 >>> db.session.add_all(default_badges)
 >>> db.session.commit()
@@ -102,79 +105,84 @@ flask shell
 python app.py
 ```
 
-Visit `http://localhost:5000` in your browser!
+Visit `http://localhost:5000` in your browser.
 
-## 📂 Project Structure
+## Project Structure
 
 ```
-habit-tracker/
+habit_tracker/
 ├── app.py                 # Main Flask application
-├── config.py             # Configuration settings
-├── models.py             # SQLAlchemy models
-├── database.sql          # Database schema
+├── config.py              # Configuration settings
+├── models.py              # SQLAlchemy models
+├── database.sql           # Database schema
 │
 ├── routes/
-│   ├── auth.py           # Authentication routes
-│   ├── habits.py         # Habit CRUD routes
-│   ├── analytics.py      # Analytics routes
-│   └── mood.py           # Mood tracking routes
+│   ├── auth.py            # Authentication routes
+│   ├── habits.py          # Habit CRUD routes
+│   ├── analytics.py       # Analytics routes
+│   └── mood.py            # Mood tracking routes
 │
 ├── services/
-│   ├── streak_engine.py  # Streak calculation logic
-│   ├── gamification.py   # XP and badge logic
-│   └── coach_engine.py   # AI coach insights
+│   ├── streak_engine.py   # Streak calculation logic
+│   ├── gamification.py    # XP and badge logic
+│   └── coach_engine.py    # Coach insights
 │
 ├── templates/
-│   ├── index.html        # Landing page
-│   ├── login.html        # Login page
-│   ├── register.html     # Registration page
-│   └── dashboard.html    # Main dashboard
+│   ├── index.html         # Landing page
+│   ├── login.html         # Login page
+│   ├── register.html      # Registration page
+│   └── dashboard.html     # Main dashboard
 │
 ├── static/
 │   ├── css/
-│   │   └── style.css     # Main stylesheet
+│   │   └── style.css      # Main stylesheet
 │   ├── js/
-│   │   └── app.js        # JavaScript app logic
-│   └── images/           # Images and icons
+│   │   └── app.js         # JavaScript application logic
+│   └── images/            # Images and icons
 │
-└── requirements.txt      # Python dependencies
+└── requirements.txt       # Python dependencies
 ```
 
-## 🔑 API Endpoints
+## API Endpoints
 
 ### Authentication
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - Login and get JWT token
-- `GET /api/auth/me` - Get current user
-- `POST /api/auth/logout` - Logout
+
+* `POST /api/auth/register`: Register a new user
+* `POST /api/auth/login`: Log in and receive a JWT token
+* `GET /api/auth/me`: Get the current user
+* `POST /api/auth/logout`: Log out
 
 ### Habits
-- `GET /api/habits` - Get all habits
-- `POST /api/habits` - Create new habit
-- `GET /api/habits/<id>` - Get specific habit
-- `PUT /api/habits/<id>` - Update habit
-- `DELETE /api/habits/<id>` - Delete habit
-- `POST /api/habits/<id>/complete` - Log completion
-- `POST /api/habits/<id>/skip` - Skip habit
-- `POST /api/habits/<id>/miss` - Mark missed
-- `GET /api/habits/<id>/history` - Get calendar history
+
+* `GET /api/habits`: Get all habits
+* `POST /api/habits`: Create a new habit
+* `GET /api/habits/<id>`: Get a specific habit
+* `PUT /api/habits/<id>`: Update a habit
+* `DELETE /api/habits/<id>`: Delete a habit
+* `POST /api/habits/<id>/complete`: Log a completion
+* `POST /api/habits/<id>/skip`: Skip a habit
+* `POST /api/habits/<id>/miss`: Mark a habit as missed
+* `GET /api/habits/<id>/history`: Get calendar history
 
 ### Analytics
-- `GET /api/analytics` - Get dashboard analytics
-- `GET /api/analytics/weekly` - Get weekly data
-- `GET /api/analytics/monthly` - Get monthly data
-- `GET /api/analytics/habit/<id>` - Get habit-specific stats
+
+* `GET /api/analytics`: Get dashboard analytics
+* `GET /api/analytics/weekly`: Get weekly data
+* `GET /api/analytics/monthly`: Get monthly data
+* `GET /api/analytics/habit/<id>`: Get habit specific statistics
 
 ### Mood
-- `POST /api/mood` - Log mood
-- `GET /api/mood/today` - Get today's mood
-- `GET /api/mood/history` - Get mood history
-- `GET /api/mood/analytics` - Get mood analytics
-- `GET /api/mood/stats` - Get mood statistics
 
-## 💾 Database Schema
+* `POST /api/mood`: Log mood
+* `GET /api/mood/today`: Get today's mood
+* `GET /api/mood/history`: Get mood history
+* `GET /api/mood/analytics`: Get mood analytics
+* `GET /api/mood/stats`: Get mood statistics
+
+## Database Schema
 
 ### Users Table
+
 ```sql
 CREATE TABLE users (
     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -188,6 +196,7 @@ CREATE TABLE users (
 ```
 
 ### Habits Table
+
 ```sql
 CREATE TABLE habits (
     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -205,6 +214,7 @@ CREATE TABLE habits (
 ```
 
 ### Habit Logs Table
+
 ```sql
 CREATE TABLE habit_logs (
     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -220,6 +230,7 @@ CREATE TABLE habit_logs (
 ```
 
 ### Moods Table
+
 ```sql
 CREATE TABLE moods (
     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -234,6 +245,7 @@ CREATE TABLE moods (
 ```
 
 ### Badges Table
+
 ```sql
 CREATE TABLE badges (
     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -244,6 +256,7 @@ CREATE TABLE badges (
 ```
 
 ### User Badges Table
+
 ```sql
 CREATE TABLE user_badges (
     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -256,74 +269,82 @@ CREATE TABLE user_badges (
 );
 ```
 
-## 🎮 Gamification System
+## Gamification System
 
 ### XP Rules
-- **+10 XP** for each habit completion
-- **+50 XP** for 7-day streak
-- **+100 XP** for 14-day streak
-- **+200 XP** for 30-day streak
+
+* **+10 XP** for each habit completion
+* **+50 XP** for a 7 day streak
+* **+100 XP** for a 14 day streak
+* **+200 XP** for a 30 day streak
 
 ### Levels
+
 ```
 Level = Total XP // 100
 ```
 
 ### Badges
-- 🔥 First Week - 7 days
-- 💪 Two Weeks - 14 days
-- 👑 Monthly Master - 30 days
-- 💯 Centennial - 100 completions
-- 🎯 Yearly Champion - 365 completions
-- 🚀 Getting Started - 10 completions
-- 🏗️ Habit Builder - 50 completions
-- 👑 Consistency King - 100 completions
 
-## 🤖 Coach Engine
+* First Week: 7 days
+* Two Weeks Strong: 14 days
+* Monthly Master: 30 days
+* Centennial: 100 completions
+* Yearly Champion: 365 completions
+* Getting Started: 10 completions
+* Habit Builder: 50 completions
+* Consistency King: 100 completions
+
+## Coach Engine
 
 The Smart Coach detects:
-- **Streak drops** - Missed days after good streaks
-- **Inactivity** - No logs for 3+ days
-- **Mood patterns** - Correlations between mood and habits
-- **Best days** - When you perform best
 
-## 🌙 Dark Mode
+* **Streak drops**: Missed days after strong streaks
+* **Inactivity**: No logs for 3 or more days
+* **Mood patterns**: Correlations between mood and habits
+* **Best days**: The days when you perform best
+
+## Dark Mode
 
 Toggle dark mode by clicking the menu button. Your preference is saved in localStorage.
 
-## 🔒 Security
+## Security
 
-- Passwords hashed with Werkzeug
-- JWT tokens for authentication
-- CORS enabled for API
-- Environment variables for sensitive data
-- SQL injection prevention via SQLAlchemy ORM
+* Passwords are hashed with Werkzeug
+* JWT tokens are used for authentication
+* CORS is enabled for the API
+* Environment variables are used for sensitive data
+* SQL injection prevention through the SQLAlchemy ORM
 
-## 📱 Responsive Design
+## Responsive Design
 
-The application is fully responsive and works on:
-- Desktop (1920px+)
-- Tablet (768px - 1920px)
-- Mobile (320px - 768px)
+The application is fully responsive and supports:
 
-## 🚀 Deployment
+* Desktop (1920px and above)
+* Tablet (768px to 1920px)
+* Mobile (320px to 768px)
+
+## Deployment
 
 ### Heroku
 
-1. Create `Procfile`:
+1. Create a `Procfile`:
+
 ```
 web: gunicorn app:app
 ```
 
-2. Create `runtime.txt`:
+2. Create a `runtime.txt`:
+
 ```
 python-3.10.0
 ```
 
 3. Deploy:
+
 ```bash
 heroku login
-heroku create your-app-name
+heroku create yourappname
 heroku addons:create cleardb:ignite
 git push heroku main
 heroku run flask shell
@@ -331,7 +352,8 @@ heroku run flask shell
 
 ### Docker
 
-Create `Dockerfile`:
+Create a `Dockerfile`:
+
 ```dockerfile
 FROM python:3.10
 WORKDIR /app
@@ -341,7 +363,7 @@ COPY . .
 CMD ["gunicorn", "-b", "0.0.0.0:5000", "app:app"]
 ```
 
-## 📊 Performance Tips
+## Performance Tips
 
 1. Use indexes on frequently queried columns
 2. Cache analytics calculations
@@ -349,51 +371,53 @@ CMD ["gunicorn", "-b", "0.0.0.0:5000", "app:app"]
 4. Use lazy loading for images
 5. Minify CSS and JavaScript
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Database Connection Error
+
 ```
 Check DATABASE_URL in .env
 Ensure MySQL is running
-Verify database exists
+Verify the database exists
 ```
 
 ### CORS Issues
+
 ```
-Flask-CORS is configured
+Flask CORS is configured
 Check request headers and origin
 ```
 
 ### Token Expired
+
 ```
 Clear localStorage
 Log in again
-Token expires after 30 days
+Tokens expire after 30 days
 ```
 
-## 🤝 Contributing
+## Contributing
 
-Feel free to fork and submit pull requests!
+Contributions are welcome. Feel free to fork the repository and submit pull requests.
 
-## 📝 License
+## License
 
-MIT License - see LICENSE file for details
+MIT License. See the LICENSE file for details.
 
-## 💡 Future Features
+## Future Features
 
-- Social features (friend challenges, leaderboards)
-- Email reminders and notifications
-- Mobile app (React Native)
-- Integration with wearables
-- Advanced analytics with ML insights
-- Community habit library
-- Habit templates
+* Social features (friend challenges and leaderboards)
+* Email reminders and notifications
+* Mobile app (React Native)
+* Integration with wearables
+* Advanced analytics with ML insights
+* Community habit library
+* Habit templates
 
-## 📞 Support
+## Support
 
-For issues, please create an issue on GitHub or email support.
+For issues, please create an issue on GitHub or contact support by email.
 
----
+## Developers
 
-**Developers:** Arun Kumar, Sourav , Anish Thakur, Paras Rana
-
+Arun Kumar, Sourav, Anish Thakur, Paras Rana
