@@ -1,83 +1,105 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - HabitFlow</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body class="d-flex align-items-center min-vh-100" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-md-5">
-                <div class="auth-card p-4 rounded-lg shadow-lg">
-                    <div class="text-center mb-4">
-                        <h2 class="fw-bold">Welcome Back</h2>
-                        <p class="text-muted">Login to continue your habit journey</p>
+{% extends "base.html" %}
+
+{% block title %}Login - HabitFlow{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card border-0 shadow-lg p-4 rounded-4 auth-card">
+                <div class="text-center mb-4">
+                    <div class="d-inline-flex align-items-center justify-content-center p-3 rounded-circle bg-primary-subtle text-primary mb-3">
+                        <i class="fas fa-lock fa-2x"></i>
+                    </div>
+                    <h2 class="fw-bold">Welcome Back</h2>
+                    <p class="text-muted small">Sign in to resume tracking your streaks and earning XP</p>
+                </div>
+
+                <div id="loginAlert" class="alert alert-danger d-none" role="alert"></div>
+
+                <form id="loginForm" onsubmit="event.preventDefault(); handleLogin();">
+                    <div class="mb-3">
+                        <label for="email" class="form-label fw-semibold">Email Address</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0"><i class="fas fa-envelope text-muted"></i></span>
+                            <input type="email" class="form-control border-start-0" id="email" name="email" placeholder="you@example.com" required autocomplete="email">
+                        </div>
                     </div>
 
-                    <form id="loginForm">
-                        <div class="mb-3">
-                            <label for="email" class="form-label">Email Address</label>
-                            <input type="email" class="form-control" id="email" name="email" required>
+                    <div class="mb-3">
+                        <label for="password" class="form-label fw-semibold">Password</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0"><i class="fas fa-key text-muted"></i></span>
+                            <input type="password" class="form-control border-start-0" id="password" name="password" placeholder="••••••••" required autocomplete="current-password">
                         </div>
+                    </div>
 
-                        <div class="mb-3">
-                            <label for="password" class="form-label">Password</label>
-                            <input type="password" class="form-control" id="password" name="password" required>
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="remember" name="remember" checked>
+                            <label class="form-check-label small" for="remember">Remember me</label>
                         </div>
+                    </div>
 
-                        <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="remember" name="remember">
-                            <label class="form-check-label" for="remember">Remember me</label>
-                        </div>
+                    <button type="submit" id="loginSubmitBtn" class="btn btn-primary w-100 py-2 rounded-pill fw-semibold shadow-sm">
+                        <span id="loginBtnText">Sign In</span>
+                        <span id="loginSpinner" class="spinner-border spinner-border-sm ms-2 d-none" role="status"></span>
+                    </button>
+                </form>
 
-                        <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">Login</button>
-                    </form>
+                <hr class="my-4">
 
-                    <hr class="my-4">
-
-                    <p class="text-center mb-0">
-                        Don't have an account?
-                        <a href="/register" class="fw-bold">Sign up here</a>
-                    </p>
-                </div>
+                <p class="text-center text-muted small mb-0">
+                    Don't have an account yet?
+                    <a href="/register" class="fw-bold text-primary text-decoration-none">Sign up free</a>
+                </p>
             </div>
         </div>
     </div>
+</div>
+{% endblock %}
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
+{% block extra_js %}
+<script>
+    async function handleLogin() {
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+        const alertEl = document.getElementById('loginAlert');
+        const submitBtn = document.getElementById('loginSubmitBtn');
+        const btnText = document.getElementById('loginBtnText');
+        const spinner = document.getElementById('loginSpinner');
 
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
+        alertEl.classList.add('d-none');
+        btnText.textContent = 'Authenticating...';
+        spinner.classList.remove('d-none');
+        submitBtn.disabled = true;
 
-            try {
-                const response = await fetch('/api/auth/login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ email, password })
-                });
+        try {
+            const response = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
 
-                const data = await response.json();
+            const data = await response.json();
 
-                if (response.ok) {
-                    localStorage.setItem('token', data.token);
-                    localStorage.setItem('user', JSON.stringify(data.user));
-                    window.location.href = '/dashboard';
-                } else {
-                    alert(data.message || 'Login failed');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('An error occurred. Please try again.');
+            if (response.ok) {
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('user', JSON.stringify(data.user));
+                updateNavbarState();
+                window.location.href = '/dashboard';
+            } else {
+                alertEl.textContent = data.message || 'Invalid email or password.';
+                alertEl.classList.remove('d-none');
             }
-        });
-    </script>
-</body>
-</html>
+        } catch (err) {
+            alertEl.textContent = 'Connection error. Please verify the server is running.';
+            alertEl.classList.remove('d-none');
+        } finally {
+            btnText.textContent = 'Sign In';
+            spinner.classList.add('d-none');
+            submitBtn.disabled = false;
+        }
+    }
+</script>
+{% endblock %}

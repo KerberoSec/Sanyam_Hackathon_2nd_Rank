@@ -1,207 +1,164 @@
+/* ==========================================================================
+   HabitFlow Master Stylesheet
+   ========================================================================== */
+
 :root {
     --primary: #667eea;
+    --primary-hover: #5a6fd1;
     --secondary: #764ba2;
     --success: #10b981;
     --danger: #ef4444;
     --warning: #f59e0b;
-    --light: #f3f4f6;
-    --dark: #1f2937;
+    --info: #3b82f6;
+    --light-bg: #f8fafc;
+    --dark-bg: #0f172a;
+    --card-bg: #ffffff;
+    --border-color: #e2e8f0;
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+    --transition-speed: 0.25s;
 }
 
 * {
+    box-sizing: border-box;
     scroll-behavior: smooth;
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-    background-color: var(--light);
-    color: var(--dark);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background-color: var(--light-bg);
+    color: var(--text-primary);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    transition: background-color var(--transition-speed) ease, color var(--transition-speed) ease;
 }
 
+.main-wrapper {
+    flex: 1 0 auto;
+}
+
+/* ==========================================================================
+   Dark Mode Overrides
+   ========================================================================== */
+
 body.dark-mode {
-    background-color: #1a1a1a;
-    color: #f3f4f6;
+    background-color: #0b1120;
+    color: #e2e8f0;
+    --light-bg: #0b1120;
+    --card-bg: #1e293b;
+    --border-color: #334155;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
 }
 
 body.dark-mode .card,
 body.dark-mode .stat-card,
 body.dark-mode .habit-item,
 body.dark-mode .auth-card,
-body.dark-mode .feature-card {
-    background-color: #2d2d2d;
-    color: #f3f4f6;
-    border-color: #444;
+body.dark-mode .feature-card,
+body.dark-mode .testimonial-card,
+body.dark-mode .modal-content,
+body.dark-mode .dropdown-menu {
+    background-color: #1e293b !important;
+    color: #f1f5f9 !important;
+    border-color: #334155 !important;
 }
 
-body.dark-mode .navbar {
-    background-color: #222 !important;
+body.dark-mode .form-control,
+body.dark-mode .form-select,
+body.dark-mode .input-group-text {
+    background-color: #0f172a !important;
+    color: #f8fafc !important;
+    border-color: #334155 !important;
 }
 
-/* Hero Section */
-.hero-section {
-    padding: 80px 0;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+body.dark-mode .form-control:focus,
+body.dark-mode .form-select:focus {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.25) !important;
+}
+
+body.dark-mode .text-muted {
+    color: #94a3b8 !important;
+}
+
+body.dark-mode .bg-light {
+    background-color: #0f172a !important;
+    color: #cbd5e1 !important;
+}
+
+body.dark-mode .btn-outline-secondary {
+    border-color: #475569;
+    color: #cbd5e1;
+}
+
+body.dark-mode .btn-outline-secondary:hover {
+    background-color: #334155;
+    color: #ffffff;
+}
+
+body.dark-mode .list-group-item {
+    background-color: transparent !important;
+    color: #e2e8f0 !important;
+    border-color: #334155 !important;
+}
+
+/* ==========================================================================
+   Navigation Bar
+   ========================================================================== */
+
+.navbar {
+    background-color: #0f172a !important;
+}
+
+.brand-text {
+    letter-spacing: -0.5px;
+    font-size: 1.25rem;
+}
+
+.user-avatar-circle {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
     color: white;
-}
-
-.hero-section h1 {
-    font-weight: 700;
-    line-height: 1.2;
-}
-
-.hero-image {
-    position: relative;
-}
-
-.animated-card {
-    background: white;
-    border-radius: 20px;
-    padding: 40px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    animation: floatUp 3s ease-in-out infinite;
-}
-
-@keyframes floatUp {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-20px); }
-}
-
-.card-content {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
-.stat-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-.stat-number {
-    font-size: 2.5rem;
-    font-weight: 700;
-    color: var(--primary);
-}
-
-.stat-label {
-    color: #9ca3af;
-    font-size: 0.9rem;
-}
-
-/* Features Section */
-.features-section {
-    padding: 80px 0;
-}
-
-.feature-card {
-    background: white;
-    border-radius: 16px;
-    padding: 30px 20px;
-    text-align: center;
-    border: 1px solid #e5e7eb;
-    transition: all 0.3s ease;
-}
-
-.feature-card:hover {
-    transform: translateY(-10px);
-    box-shadow: 0 20px 40px rgba(102, 126, 234, 0.2);
-}
-
-.feature-icon {
-    font-size: 3rem;
-    margin-bottom: 20px;
-}
-
-.feature-card h5 {
-    font-weight: 600;
-    margin-bottom: 10px;
-}
-
-.feature-card p {
-    font-size: 0.95rem;
-    margin-bottom: 0;
-}
-
-/* Work Steps */
-.work-step {
-    text-align: center;
-    padding: 20px;
-}
-
-.step-number {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 60px;
-    height: 60px;
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    color: white;
-    border-radius: 50%;
-    font-size: 1.5rem;
-    font-weight: 700;
-    margin-bottom: 20px;
+    font-size: 0.85rem;
 }
 
-/* Testimonials */
-.testimonial-card {
-    background: white;
-    border-radius: 16px;
-    padding: 30px;
-    border: 1px solid #e5e7eb;
-    transition: all 0.3s ease;
-}
+/* ==========================================================================
+   Dashboard Statistics Cards
+   ========================================================================== */
 
-.testimonial-card:hover {
-    box-shadow: 0 20px 40px rgba(102, 126, 234, 0.2);
-}
-
-.stars {
-    margin-bottom: 15px;
-}
-
-.quote {
-    font-style: italic;
-    margin-bottom: 15px;
-    color: #6b7280;
-}
-
-.author {
-    font-weight: 600;
-    color: var(--primary);
-}
-
-/* CTA Section */
-.cta-section {
-    border-radius: 20px;
-}
-
-/* Dashboard */
 .stat-card {
-    background: white;
-    border-radius: 16px;
-    padding: 20px;
+    background: var(--card-bg);
+    border-radius: 1rem;
+    padding: 1.25rem;
     display: flex;
     align-items: center;
-    gap: 20px;
-    border: 1px solid #e5e7eb;
-    transition: all 0.3s ease;
+    gap: 1.25rem;
+    border: 1px solid var(--border-color);
+    transition: transform var(--transition-speed) ease, box-shadow var(--transition-speed) ease;
 }
 
 .stat-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px -6px rgba(0, 0, 0, 0.08);
 }
 
 .stat-icon {
-    width: 60px;
-    height: 60px;
-    border-radius: 12px;
+    width: 56px;
+    height: 56px;
+    border-radius: 0.875rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 2rem;
+    font-size: 1.75rem;
     color: white;
+    flex-shrink: 0;
 }
 
 .stat-content {
@@ -209,329 +166,252 @@ body.dark-mode .navbar {
 }
 
 .stat-label {
-    font-size: 0.9rem;
-    color: #9ca3af;
-    margin-bottom: 5px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    margin-bottom: 2px;
 }
 
 .stat-value {
-    font-size: 1.8rem;
+    font-size: 1.75rem;
     font-weight: 700;
-    color: var(--dark);
+    line-height: 1.2;
 }
 
-/* Habit List */
+/* ==========================================================================
+   AI Coaching Cards
+   ========================================================================== */
+
+.ai-banner-card {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+    border: 1px solid rgba(102, 126, 234, 0.25) !important;
+    border-radius: 1rem;
+}
+
+body.dark-mode .ai-banner-card {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+    border-color: rgba(102, 126, 234, 0.4) !important;
+}
+
+.ai-avatar-badge {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.25);
+    flex-shrink: 0;
+}
+
+body.dark-mode .ai-avatar-badge {
+    background: #0f172a;
+}
+
+/* ==========================================================================
+   Habits List
+   ========================================================================== */
+
 .habit-list {
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 1rem;
 }
 
 .habit-item {
-    background: white;
-    border-radius: 16px;
-    padding: 20px;
+    background: var(--card-bg);
+    border-radius: 1rem;
+    padding: 1.15rem 1.25rem;
     border-left: 5px solid var(--primary);
+    border: 1px solid var(--border-color);
+    border-left-width: 5px;
     display: flex;
     align-items: center;
-    gap: 15px;
-    transition: all 0.3s ease;
-    border: 1px solid #e5e7eb;
+    gap: 1rem;
+    transition: all var(--transition-speed) ease;
 }
 
 .habit-item:hover {
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    transform: translateX(4px);
+    box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.08);
 }
 
 .habit-item.completed {
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));
     border-left-color: var(--success);
+    background: linear-gradient(90deg, rgba(16, 185, 129, 0.06) 0%, transparent 100%);
+}
+
+.habit-item.skipped {
+    border-left-color: var(--warning);
+    background: linear-gradient(90deg, rgba(245, 158, 11, 0.06) 0%, transparent 100%);
 }
 
 .habit-item.missed {
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05));
     border-left-color: var(--danger);
+    background: linear-gradient(90deg, rgba(239, 68, 68, 0.06) 0%, transparent 100%);
 }
 
 .habit-icon {
-    font-size: 2rem;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.75rem;
+    flex-shrink: 0;
 }
 
 .habit-content {
     flex: 1;
+    min-width: 0;
 }
 
 .habit-title {
-    font-weight: 600;
-    margin-bottom: 5px;
+    font-size: 1.05rem;
+    transition: color var(--transition-speed);
 }
 
-.habit-streak {
-    font-size: 0.9rem;
-    color: #9ca3af;
+body.dark-mode .habit-title {
+    color: #f8fafc !important;
 }
 
-.habit-stream {
-    font-size: 0.8rem;
-    color: #f59e0b;
-    font-weight: 600;
+.habit-title:hover {
+    color: var(--primary) !important;
 }
 
-.habit-actions {
-    display: flex;
-    gap: 10px;
-}
-
-.habit-btn {
-    padding: 8px 12px;
-    border-radius: 8px;
-    border: none;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-weight: 500;
-}
-
-.btn-complete {
-    background: linear-gradient(135deg, var(--success), #059669);
-    color: white;
-}
-
-.btn-complete:hover {
-    transform: scale(1.05);
-}
-
-.btn-skip {
-    background: #e5e7eb;
-    color: var(--dark);
-}
-
-.btn-skip:hover {
-    background: #d1d5db;
-}
-
-.btn-miss {
-    background: var(--danger);
-    color: white;
-}
-
-.btn-miss:hover {
-    background: #dc2626;
-}
-
-/* Mood Tracker */
-.mood-tracker {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    background: white;
-    border-radius: 16px;
-    padding: 20px;
-    border: 1px solid #e5e7eb;
-}
+/* ==========================================================================
+   Mood Tracker
+   ========================================================================== */
 
 .mood-option {
     cursor: pointer;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-    padding: 20px;
-    border-radius: 12px;
-    background: #f9fafb;
-    transition: all 0.3s ease;
+    background: var(--card-bg);
+    border: 2px solid var(--border-color);
+    transition: all var(--transition-speed) ease;
+    user-select: none;
 }
 
 .mood-option:hover {
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
     transform: translateY(-3px);
+    border-color: var(--primary);
+    background: rgba(102, 126, 234, 0.05);
 }
 
-.mood-emoji {
-    font-size: 2.5rem;
+.mood-option.selected {
+    border-color: var(--primary);
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
 }
 
-.mood-label {
-    font-weight: 500;
-    color: var(--dark);
-}
+/* ==========================================================================
+   Badges Grid
+   ========================================================================== */
 
-/* Badges */
 .badges-container {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 15px;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.75rem;
 }
 
-.badge-item {
-    background: white;
-    border-radius: 12px;
-    padding: 20px;
-    text-align: center;
-    border: 2px solid #e5e7eb;
-    transition: all 0.3s ease;
-}
-
-.badge-item.unlocked {
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
-    border-color: var(--primary);
-}
-
-.badge-item:not(.unlocked) {
-    opacity: 0.5;
-}
-
-.badge-icon {
-    font-size: 2rem;
-    margin-bottom: 10px;
-}
-
-.badge-name {
-    font-weight: 600;
-    font-size: 0.85rem;
-}
-
-/* Auth Cards */
-.auth-card {
-    background: white;
-    border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-}
-
-/* Forms */
-.form-control,
-.form-select {
-    border-radius: 10px;
-    border: 1px solid #e5e7eb;
-    padding: 10px 15px;
-    transition: all 0.3s ease;
-}
-
-.form-control:focus,
-.form-select:focus {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-/* Buttons */
-.btn-primary {
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
-    border: none;
-    transition: all 0.3s ease;
-}
-
-.btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
-}
-
-.btn-outline-primary {
-    border-color: var(--primary);
-    color: var(--primary);
-}
-
-.btn-outline-primary:hover {
-    background: var(--primary);
-    border-color: var(--primary);
-}
-
-/* Cards */
-.card {
-    border: 1px solid #e5e7eb;
-    border-radius: 16px;
-    transition: all 0.3s ease;
-}
-
-.card:hover {
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-}
-
-/* Animations */
-@keyframes slideInUp {
-    from {
-        opacity: 0;
-        transform: translateY(30px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
-}
-
-@keyframes pulse {
-    0%, 100% {
-        opacity: 1;
-    }
-    50% {
-        opacity: 0.5;
-    }
-}
-
-@keyframes scaleIn {
-    from {
-        transform: scale(0.5);
-        opacity: 0;
-    }
-    to {
-        transform: scale(1);
-        opacity: 1;
-    }
-}
-
-.habit-item {
-    animation: slideInUp 0.3s ease;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-    .hero-section {
-        padding: 40px 0;
-    }
-
-    .hero-section h1 {
-        font-size: 2rem;
-    }
-
-    .stat-card {
-        flex-direction: column;
-        text-align: center;
-    }
-
-    .habit-actions {
-        flex-direction: column;
-    }
-
-    .habit-btn {
-        width: 100%;
-    }
-
+@media (max-width: 1200px) {
     .badges-container {
         grid-template-columns: repeat(2, 1fr);
     }
 }
 
-/* Utilities */
-.text-gradient {
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+.badge-item {
+    background: var(--card-bg);
+    border-radius: 0.875rem;
+    padding: 0.875rem 0.5rem;
+    text-align: center;
+    border: 2px solid var(--border-color);
+    transition: all var(--transition-speed) ease;
 }
 
-.rounded-lg {
-    border-radius: 12px;
+.badge-item.unlocked {
+    border-color: #fbbf24;
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%);
+    box-shadow: 0 4px 10px rgba(245, 158, 11, 0.15);
 }
 
-.shadow-sm-hover:hover {
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1) !important;
+.badge-item.locked {
+    opacity: 0.45;
+    filter: grayscale(80%);
+}
+
+.badge-item:hover {
+    transform: translateY(-2px);
+}
+
+.badge-name {
+    font-weight: 600;
+    font-size: 0.75rem;
+    line-height: 1.2;
+}
+
+.badge-desc {
+    font-size: 0.7rem;
+    display: block;
+}
+
+/* ==========================================================================
+   Calendar Activity Heatmap
+   ========================================================================== */
+
+.calendar-heatmap-grid {
+    overflow-x: auto;
+}
+
+.calendar-day-tile:hover {
+    transform: scale(1.15);
+    z-index: 2;
+}
+
+.legend-box {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+}
+
+/* ==========================================================================
+   Buttons & Inputs
+   ========================================================================== */
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+    border: none;
+    transition: all var(--transition-speed) ease;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, var(--primary-hover) 0%, #684192 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.35);
+}
+
+.recommendation-card {
+    transition: all var(--transition-speed) ease;
+}
+
+.recommendation-card:hover {
+    border-color: var(--primary) !important;
+    box-shadow: 0 6px 18px rgba(102, 126, 234, 0.15) !important;
+}
+
+/* ==========================================================================
+   Responsive Utilities
+   ========================================================================== */
+
+@media (max-width: 768px) {
+    .habit-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .habit-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
 }

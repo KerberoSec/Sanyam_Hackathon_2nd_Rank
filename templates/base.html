@@ -4,167 +4,129 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}HabitFlow - Build Better Habits{% endblock %}</title>
+    <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Main Application Stylesheet -->
     <link rel="stylesheet" href="/static/css/style.css">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
-        <div class="container-fluid">
-            <a class="navbar-brand fw-bold" href="/dashboard">
-                <i class="fas fa-rocket"></i> HabitFlow
+    <!-- Global Sticky Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top shadow-sm">
+        <div class="container-fluid px-lg-4">
+            <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="/dashboard">
+                <i class="fas fa-rocket text-primary"></i>
+                <span class="brand-text">HabitFlow</span>
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
                 <span class="navbar-toggler-icon"></span>
             </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    {% if session.get('user_id') %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="/dashboard">Dashboard</a>
+
+            <div class="collapse navbar-collapse" id="navbarMain">
+                <ul class="navbar-nav ms-auto align-items-lg-center gap-2">
+                    <!-- Navigation visible only when user is logged in -->
+                    <li class="nav-item auth-only" style="display: none;">
+                        <a class="nav-link" href="/dashboard"><i class="fas fa-chart-line me-1"></i> Dashboard</a>
                     </li>
-                    <li class="nav-item">
-                        <span class="badge bg-primary me-2">Lvl <span id="navUserLevel">1</span></span>
-                        <span class="badge bg-success">XP <span id="navUserXP">0</span></span>
+                    <li class="nav-item auth-only" style="display: none;">
+                        <div class="d-flex align-items-center gap-2 py-1">
+                            <span class="badge bg-primary px-3 py-2 rounded-pill shadow-sm">
+                                <i class="fas fa-shield-alt me-1"></i>Lvl <span id="navUserLevel">1</span>
+                            </span>
+                            <span class="badge bg-success px-3 py-2 rounded-pill shadow-sm">
+                                <i class="fas fa-star me-1"></i><span id="navUserXP">0</span> XP
+                            </span>
+                        </div>
                     </li>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-user"></i> <span id="navUserName">User</span>
+                    <li class="nav-item dropdown auth-only" style="display: none;">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center gap-2" href="#" id="navbarUserDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <div class="user-avatar-circle">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <span id="navUserName" class="fw-semibold">User</span>
                         </a>
-                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                            <li><a class="dropdown-item" href="#" onclick="toggleDarkMode()"><i class="fas fa-moon"></i> Dark Mode</a></li>
+                        <ul class="dropdown-menu dropdown-menu-end shadow border-0" aria-labelledby="navbarUserDropdown">
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="#" onclick="toggleDarkMode(); return false;">
+                                    <i class="fas fa-moon text-warning"></i> <span>Dark Mode</span>
+                                </a>
+                            </li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2 py-2 text-danger" href="#" onclick="logout(); return false;">
+                                    <i class="fas fa-sign-out-alt"></i> <span>Log Out</span>
+                                </a>
+                            </li>
                         </ul>
                     </li>
-                    {% else %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="/login">Login</a>
+
+                    <!-- Navigation visible when logged out (guest) -->
+                    <li class="nav-item guest-only">
+                        <a class="nav-link" href="/login"><i class="fas fa-sign-in-alt me-1"></i> Login</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/register">Register</a>
+                    <li class="nav-item guest-only">
+                        <a class="btn btn-primary btn-sm px-3 rounded-pill fw-semibold" href="/register">Get Started</a>
                     </li>
-                    {% endif %}
+                    <li class="nav-item guest-only">
+                        <button class="btn btn-outline-secondary btn-sm rounded-circle p-2 ms-1" onclick="toggleDarkMode()" title="Toggle Dark Mode">
+                            <i class="fas fa-moon"></i>
+                        </button>
+                    </li>
                 </ul>
             </div>
         </div>
     </nav>
 
-    <!-- Main Content -->
-    <main>
+    <!-- Main Dynamic Content Container -->
+    <main class="main-wrapper">
         {% block content %}{% endblock %}
     </main>
 
-    <!-- Footer -->
-    <footer class="bg-dark text-white mt-5 py-4">
-        <div class="container">
-            <div class="row">
-                <div class="col-md-4">
-                    <h6>HabitFlow</h6>
-                    <p class="text-muted small">Building better habits, one day at a time.</p>
+    <!-- Global Application Footer -->
+    <footer class="footer bg-dark text-white mt-5 py-4 border-top border-secondary">
+        <div class="container text-center text-md-start">
+            <div class="row gy-4">
+                <div class="col-md-5">
+                    <h5 class="fw-bold text-white mb-2"><i class="fas fa-rocket text-primary me-2"></i>HabitFlow</h5>
+                    <p class="text-secondary small mb-0">
+                        Turn consistency into a superpower. Smart habit tracking powered by behavioral science and intelligent AI coaching.
+                    </p>
                 </div>
                 <div class="col-md-4">
-                    <h6>Quick Links</h6>
-                    <ul class="list-unstyled small">
-                        {% if session.get('user_id') %}
-                        <li><a href="/dashboard" class="text-muted text-decoration-none">Dashboard</a></li>
-                        {% else %}
-                        <li><a href="/login" class="text-muted text-decoration-none">Login</a></li>
-                        <li><a href="/register" class="text-muted text-decoration-none">Register</a></li>
-                        {% endif %}
+                    <h6 class="text-uppercase fw-semibold text-light small mb-3">Navigation</h6>
+                    <ul class="list-unstyled small d-flex flex-column gap-2 mb-0">
+                        <li><a href="/dashboard" class="text-secondary text-decoration-none hover-white">Dashboard</a></li>
+                        <li><a href="/login" class="text-secondary text-decoration-none hover-white">Account Login</a></li>
+                        <li><a href="/register" class="text-secondary text-decoration-none hover-white">Sign Up Free</a></li>
                     </ul>
                 </div>
-                <div class="col-md-4">
-                    <h6>Follow Us</h6>
+                <div class="col-md-3">
+                    <h6 class="text-uppercase fw-semibold text-light small mb-3">Connect</h6>
                     <div class="d-flex gap-3">
-                        <a href="#" class="text-muted text-decoration-none"><i class="fab fa-twitter"></i></a>
-                        <a href="#" class="text-muted text-decoration-none"><i class="fab fa-github"></i></a>
-                        <a href="#" class="text-muted text-decoration-none"><i class="fab fa-linkedin"></i></a>
+                        <a href="https://github.com" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm rounded-circle"><i class="fab fa-github"></i></a>
+                        <a href="https://twitter.com" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm rounded-circle"><i class="fab fa-twitter"></i></a>
+                        <a href="https://linkedin.com" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm rounded-circle"><i class="fab fa-linkedin-in"></i></a>
                     </div>
                 </div>
             </div>
-            <hr class="bg-secondary">
-            <p class="text-center text-muted mb-0 small">&copy; 2024 HabitFlow. All rights reserved. Powered by AI.</p>
+            <hr class="border-secondary my-4">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-center text-secondary small">
+                <p class="mb-0">&copy; 2026 HabitFlow. All rights reserved.</p>
+                <p class="mb-0">Built with Flask, SQLAlchemy & Google Gemini AI</p>
+            </div>
         </div>
     </footer>
 
-    <!-- Scripts -->
+    <!-- Vendor Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.0/dist/confetti.browser.min.js"></script>
 
-    <!-- Base Template Script -->
-    <script>
-        // Load dark mode preference
-        function loadDarkMode() {
-            if (localStorage.getItem('darkMode') === 'true') {
-                document.body.classList.add('dark-mode');
-            }
-        }
-
-        // Toggle dark mode
-        function toggleDarkMode() {
-            document.body.classList.toggle('dark-mode');
-            localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
-        }
-
-        // Get auth token
-        function getToken() {
-            return localStorage.getItem('token');
-        }
-
-        // Get auth header
-        function getAuthHeader() {
-            return {
-                'Authorization': `Bearer ${getToken()}`,
-                'Content-Type': 'application/json'
-            };
-        }
-
-        // Logout
-        function logout() {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            window.location.href = '/login';
-        }
-
-        // Show toast notification
-        function showToast(message, type = 'info') {
-            const toastContainer = document.createElement('div');
-            toastContainer.className = `position-fixed bottom-0 end-0 p-3`;
-            toastContainer.innerHTML = `
-                <div class="alert alert-${type} alert-dismissible fade show" role="alert" style="min-width: 300px;">
-                    ${message}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            `;
-
-            document.body.appendChild(toastContainer);
-
-            setTimeout(() => {
-                toastContainer.remove();
-            }, 3000);
-        }
-
-        // Update navbar with user info
-        function updateNavbar() {
-            const user = JSON.parse(localStorage.getItem('user') || '{}');
-            if (user.name) {
-                document.getElementById('navUserName').textContent = user.name;
-                document.getElementById('navUserLevel').textContent = user.level || 1;
-                document.getElementById('navUserXP').textContent = user.xp_points || 0;
-            }
-        }
-
-        // Initialize on page load
-        document.addEventListener('DOMContentLoaded', () => {
-            loadDarkMode();
-            updateNavbar();
-        });
-    </script>
-
+    <!-- Core App Logic -->
+    <script src="/static/js/app.js"></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

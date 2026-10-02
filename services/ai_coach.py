@@ -1,256 +1,405 @@
+"""
+HabitFlow AI Coach Service
+==========================
+This service leverages Google Gemini generative AI to provide personalized,
+adaptive behavioral coaching, habit recommendations, weekly performance reviews,
+and emotional correlation insights.
+
+Graceful Degradation:
+If the Gemini API key is not configured, the network is unavailable, or quota limits
+are exceeded, the service seamlessly falls back to dynamic, algorithmic coaching advice
+generated from actual user metrics and behavioral science principles.
+"""
+
 import os
 import json
-from datetime import datetime, date
-import google.generativeai as genai
-from functools import wraps
+import re
+from datetime import datetime, date, timezone
+from typing import Dict, Any, List, Optional
 
-# Configure Gemini API
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+# Attempt to import Google Generative AI library
+try:
+    import google.generativeai as genai
+    GENAI_AVAILABLE = True
+except ImportError:
+    genai = None
+    GENAI_AVAILABLE = False
+
 
 class AICoachService:
-    """Service to integrate Gemini API for intelligent habit coaching"""
+    """Service class managing AI-powered coaching interactions."""
 
-    MODEL_NAME = "gemini-2.0-flash"
+    DEFAULT_MODEL = "gemini-1.5-flash"
 
-    # Fallback messages if API fails
+    # Fallback message templates categorized by coaching interaction type
     FALLBACK_MESSAGES = {
-        'daily': "Keep the momentum going! Every daily completion builds your foundation of consistency.",
-        'weekly': "Great effort this week! You're building the habit loops that stick. Stay focused on your goals.",
-        'recommendation': "Consider adding a micro-habit that complements your existing routine. Small changes compound!"
+        'daily': "Keep your momentum going! Every single completion lays another brick in your foundation of consistency.",
+        'weekly': "Great effort this week! Consistency compounds over time. Celebrate your wins and set your intentions for next week.",
+        'recommendation': "Start small with a micro-habit (<2 minutes). Anchor it immediately to an existing daily routine.",
+        'mood': "Your emotional wellbeing and physical habits are intimately linked. Prioritize self-care on low-energy days."
     }
 
     @staticmethod
-    def is_available():
-        """Check if Gemini API is configured"""
-        return GEMINI_API_KEY is not None
+    def get_api_key() -> Optional[str]:
+        """
+        Retrieves the Gemini API key from environment variables.
+        
+        Returns:
+            str or None: Configured API key if present.
+        """
+        return os.environ.get('GEMINI_API_KEY', None)
 
-    @staticmethod
-    def generate_daily_coach_message(user_stats, user_habits):
+    @classmethod
+    def is_available(cls) -> bool:
         """
-        Generate a daily coaching message based on user stats.
-        Called once per day and cached in database.
+        Verifies whether the Gemini library is installed and an API key is provided.
+        
+        Returns:
+            bool: True if AI generation can be attempted, False otherwise.
         """
-        if not AICoachService.is_available():
-            return {'message': AICoachService.FALLBACK_MESSAGES['daily'], 'error': 'API not configured'}
+        api_key = cls.get_api_key()
+        return bool(GENAI_AVAILABLE and api_key and api_key.strip() and not api_key.startswith('your-'))
+
+    @classmethod
+    def _init_genai(cls) -> bool:
+        """
+        Initializes and configures the Gemini SDK with the active API key.
+        
+        Returns:
+            bool: True if initialization succeeded, False otherwise.
+        """
+        if not cls.is_available():
+            return False
+        try:
+            genai.configure(api_key=cls.get_api_key())
+            return True
+        except Exception as e:
+            print(f"Warning: Failed to configure Gemini API: {e}")
+            return False
+
+    @classmethod
+    def generate_daily_coach_message(cls, user_stats: Dict[str, Any], user_habits: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Generates a concise, personalized daily motivation message based on user stats.
+        
+        Args:
+            user_stats: Dictionary containing total habits, completions, streak, consistency score.
+            user_habits: List of active habit dictionaries.
+            
+        Returns:
+            dict: Generated message, timestamp, model used, or fallback message.
+        """
+        now_iso = datetime.now(timezone.utc).isoformat()
+
+        # Dynamic fallback based on real stats
+        streak = user_stats.get('combined_streak', 0)
+        completions = user_stats.get('total_completions', 0)
+        consistency = user_stats.get('consistency_score', 0)
+
+        if streak > 14:
+            fallback = f"Incredible consistency! With a {streak}-day combined streak and {consistency}% consistency, your habit loops are deeply ingrained. Keep this powerhouse momentum going today!"
+        elif streak > 3:
+            fallback = f"You're building solid traction with {streak} consecutive streak days! Focus on executing your key habits today to keep the fire burning."
+        elif completions > 0:
+            fallback = f"Every day is a fresh opportunity to build upon your {completions} lifetime completions. Pick your most important habit first and conquer it early today!"
+        else:
+            fallback = "The journey of a thousand miles begins with a single step. Complete just one habit today to ignite your very first streak!"
+
+        if not cls.is_available():
+            return {
+                'message': fallback,
+                'generated_at': now_iso,
+                'cached': False,
+                'source': 'algorithm'
+            }
 
         try:
-            # Build context string from stats
-            context = AICoachService._build_user_context(user_stats, user_habits)
-
-            prompt = f"""You are a supportive, encouraging habit coach. Your role is to provide personalized, brief daily motivation to help users build consistency.
-
-User Current Stats:
+            cls._init_genai()
+            context = cls._build_user_context(user_stats, user_habits)
+            prompt = f"""You are a warm, supportive, and scientifically grounded habit coach.
+Analyze the user's current progress:
 {context}
 
-Based on these stats, generate a SHORT, encouraging daily message (2-3 sentences max) that:
-1. Acknowledges their current progress
-2. Identifies one specific area to focus on today
-3. Provides one actionable tip
+Generate a concise, encouraging daily message (2 to 3 sentences maximum):
+1. Acknowledge their specific progress or encourage their fresh start.
+2. Provide ONE actionable behavioral tip (e.g. habit stacking, 2-minute rule, or implementation intention).
+3. Keep the tone inspiring, direct, and human. Avoid clichés and generic platitudes."""
 
-Keep the tone warm, friendly, and motivational. Avoid generic platitudes."""
-
-            model = genai.GenerativeModel(AICoachService.MODEL_NAME)
+            model = genai.GenerativeModel(cls.DEFAULT_MODEL)
             response = model.generate_content(prompt)
-
-            message = response.text.strip() if response.text else AICoachService.FALLBACK_MESSAGES['daily']
+            message = response.text.strip() if response and response.text else fallback
 
             return {
                 'message': message,
-                'generated_at': datetime.utcnow().isoformat(),
-                'model': AICoachService.MODEL_NAME
+                'generated_at': now_iso,
+                'cached': False,
+                'source': 'gemini'
             }
         except Exception as e:
-            print(f"AI Coach Error: {str(e)}")
+            print(f"Gemini API Error (daily): {e}")
             return {
-                'message': AICoachService.FALLBACK_MESSAGES['daily'],
+                'message': fallback,
+                'generated_at': now_iso,
+                'cached': False,
+                'source': 'fallback',
                 'error': str(e)
             }
 
-    @staticmethod
-    def generate_weekly_summary(user_stats, user_habits, weekly_data):
+    @classmethod
+    def generate_weekly_summary(cls, user_stats: Dict[str, Any], user_habits: List[Dict[str, Any]],
+                                weekly_data: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
-        Generate a detailed weekly performance summary with insights and recommendations.
+        Generates a comprehensive weekly performance review analyzing consistency,
+        identifying strongest days, and offering tactical behavioral advice.
+        
+        Args:
+            user_stats: Summary user statistics.
+            user_habits: Active habits list.
+            weekly_data: Day-by-day weekly breakdown from analytics.
+            
+        Returns:
+            dict: Summary text, timestamp, and source.
         """
-        if not AICoachService.is_available():
-            return {'summary': AICoachService.FALLBACK_MESSAGES['weekly'], 'error': 'API not configured'}
+        now_iso = datetime.now(timezone.utc).isoformat()
+
+        # Dynamic fallback review
+        total_completions = sum(d.get('completed', 0) for d in weekly_data)
+        best_day = max(weekly_data, key=lambda d: d.get('completed', 0)) if weekly_data else None
+        best_day_str = best_day.get('day', 'midweek') if best_day else 'midweek'
+
+        fallback = (
+            f"Weekly Performance Review: You recorded {total_completions} completions this past week, "
+            f"with {best_day_str} standing out as your strongest day. "
+            "To sustain this momentum next week, prepare your environment the night before and anchor your hardest habit to your morning routine."
+        )
+
+        if not cls.is_available():
+            return {
+                'summary': fallback,
+                'generated_at': now_iso,
+                'source': 'algorithm'
+            }
 
         try:
-            context = AICoachService._build_user_context(user_stats, user_habits)
-            weekly_context = AICoachService._build_weekly_context(weekly_data)
+            cls._init_genai()
+            user_ctx = cls._build_user_context(user_stats, user_habits)
+            weekly_ctx = cls._build_weekly_context(weekly_data)
 
-            prompt = f"""You are a habit psychologist and behavioral coach. Generate a weekly performance review that transforms numbers into insights.
-
+            prompt = f"""You are a behavioral psychologist reviewing a client's weekly habit performance.
 User Profile:
-{context}
+{user_ctx}
 
-Weekly Performance:
-{weekly_context}
+Weekly Log Breakdown:
+{weekly_ctx}
 
-Create a structured weekly summary (3-4 sentences) that:
-1. Celebrates wins and acknowledges challenges
-2. Identifies the user's strongest and weakest days (pattern recognition)
-3. Provides ONE specific, actionable recommendation
-4. Builds emotional connection ("you're building momentum", etc.)
+Write a structured weekly review (3-4 sentences):
+1. Highlight positive achievements and pattern recognition (e.g. peak days).
+2. Offer one specific behavioral tweak (e.g. temptation bundling, friction reduction).
+3. Conclude with an empowering forward-looking reflection for the week ahead."""
 
-Be encouraging but honest. Use behavioral psychology language."""
-
-            model = genai.GenerativeModel(AICoachService.MODEL_NAME)
+            model = genai.GenerativeModel(cls.DEFAULT_MODEL)
             response = model.generate_content(prompt)
-
-            summary = response.text.strip() if response.text else AICoachService.FALLBACK_MESSAGES['weekly']
+            summary = response.text.strip() if response and response.text else fallback
 
             return {
                 'summary': summary,
-                'generated_at': datetime.utcnow().isoformat(),
-                'model': AICoachService.MODEL_NAME
+                'generated_at': now_iso,
+                'source': 'gemini'
             }
         except Exception as e:
-            print(f"AI Coach Error: {str(e)}")
+            print(f"Gemini API Error (weekly): {e}")
             return {
-                'summary': AICoachService.FALLBACK_MESSAGES['weekly'],
+                'summary': fallback,
+                'generated_at': now_iso,
+                'source': 'fallback',
                 'error': str(e)
             }
 
-    @staticmethod
-    def generate_habit_recommendations(user_goal, user_stats, existing_habits):
+    @classmethod
+    def generate_habit_recommendations(cls, user_goal: str, user_stats: Dict[str, Any],
+                                       existing_habits: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
-        Generate smart habit recommendations based on user's stated goal and behavior pattern.
+        Generates 3 actionable micro-habits tailored to the user's stated goal
+        (e.g., 'better focus', 'deep sleep', 'stress reduction', 'fitness').
+        
+        Args:
+            user_goal: User's goal text.
+            user_stats: Current user statistics.
+            existing_habits: Current active habits.
+            
+        Returns:
+            dict: List of recommended habit objects with title, category, icon, frequency, and rationale.
         """
-        if not AICoachService.is_available():
-            return {'recommendations': [], 'error': 'API not configured'}
+        now_iso = datetime.now(timezone.utc).isoformat()
+
+        # Goal-based curated fallback library
+        goal_lower = user_goal.lower() if user_goal else "productivity"
+        fallback_library = {
+            'sleep': [
+                {'title': 'Screen Off 30m Before Bed', 'category': 'health', 'icon': '🌙', 'frequency': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'], 'why': 'Reduces blue light exposure to promote natural melatonin production.', 'duration': '30 mins'},
+                {'title': '5-Minute Bedroom Reset', 'category': 'health', 'icon': '🛏️', 'frequency': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'], 'why': 'An uncluttered sleeping space lowers cognitive arousal before sleep.', 'duration': '5 mins'},
+                {'title': 'Nighttime Chamomile Tea', 'category': 'health', 'icon': '🍵', 'frequency': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'], 'why': 'Creates a consistent sensory cue signaling your nervous system to unwind.', 'duration': '10 mins'}
+            ],
+            'focus': [
+                {'title': 'Pomodoro Session (25 min)', 'category': 'productivity', 'icon': '⏱️', 'frequency': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'], 'why': 'Structured intervals minimize cognitive fatigue and prevent context switching.', 'duration': '25 mins'},
+                {'title': 'Morning Top 3 Tasks List', 'category': 'productivity', 'icon': '📝', 'frequency': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'], 'why': 'Identifies highest-leverage priorities before email and messages create reactive bias.', 'duration': '5 mins'},
+                {'title': '5-Minute Mindful Breathing', 'category': 'health', 'icon': '🧘', 'frequency': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'], 'why': 'Activates the parasympathetic nervous system to improve executive attention.', 'duration': '5 mins'}
+            ],
+            'fitness': [
+                {'title': '15-Minute Morning Mobility', 'category': 'fitness', 'icon': '🤸', 'frequency': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'], 'why': 'Increases synovial fluid circulation and primes motor neural pathways.', 'duration': '15 mins'},
+                {'title': 'Hydrate: 500ml Water on Waking', 'category': 'health', 'icon': '💧', 'frequency': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'], 'why': 'Replaces nighttime fluid loss and jumpstarts metabolic cellular function.', 'duration': '1 min'},
+                {'title': '10-Minute Post-Lunch Walk', 'category': 'fitness', 'icon': '🚶', 'frequency': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'], 'why': 'Blunts postprandial glucose spikes and prevents afternoon fatigue slumps.', 'duration': '10 mins'}
+            ]
+        }
+
+        # Select closest matching fallback
+        matched_key = 'productivity'
+        for key in fallback_library:
+            if key in goal_lower:
+                matched_key = key
+                break
+        fallback_recommendations = fallback_library.get(matched_key, fallback_library['focus'])
+
+        if not cls.is_available():
+            return {
+                'recommendations': fallback_recommendations,
+                'goal': user_goal,
+                'generated_at': now_iso,
+                'source': 'library'
+            }
 
         try:
-            context = AICoachService._build_user_context(user_stats, existing_habits)
-            habits_list = ', '.join([h['title'] for h in existing_habits]) if existing_habits else 'None yet'
-
-            prompt = f"""You are a habit formation expert. Recommend EXACTLY 3 small, micro-habits that fit the user's goal and current capacity.
-
+            cls._init_genai()
+            context = cls._build_user_context(user_stats, existing_habits)
+            prompt = f"""You are an elite habit formation specialist.
 User Goal: {user_goal}
-Current Stats:
+User Profile:
 {context}
 
-Existing Habits: {habits_list}
-
-Generate 3 micro-habit recommendations in JSON format (no extra text):
-[
-  {{"habit": "specific action", "why": "psychological reason in 1 sentence", "frequency": "daily/3x per week", "duration": "estimated time"}},
-  ...
-]
-
+Recommend EXACTLY 3 micro-habits specifically tailored to this goal.
 Rules:
-- Each habit should take <5 minutes
-- Avoid duplicating existing habits
-- Prioritize habits aligned with behavioral psychology (habit stacking, body doubling, etc.)
-- Focus on consistency over intensity
-- Make habits SPECIFIC and measurable"""
+- Each habit must take less than 15 minutes.
+- Provide output strictly as a JSON array of 3 objects with keys:
+  "title" (string), "category" ("health", "fitness", "learning", "productivity", "general"),
+  "icon" (single emoji), "frequency" (list of weekday names in lowercase),
+  "why" (1 concise sentence explaining the psychological benefit),
+  "duration" (string, e.g. "5 mins").
 
-            model = genai.GenerativeModel(AICoachService.MODEL_NAME)
+Return ONLY valid raw JSON with no markdown wrapping or additional text."""
+
+            model = genai.GenerativeModel(cls.DEFAULT_MODEL)
             response = model.generate_content(prompt)
+            raw_text = response.text.strip() if response and response.text else ""
 
-            response_text = response.text.strip() if response.text else "[]"
+            # Extract JSON block
+            if "```json" in raw_text:
+                raw_text = raw_text.split("```json")[1].split("```")[0]
+            elif "```" in raw_text:
+                raw_text = raw_text.split("```")[1].split("```")[0]
 
-            # Extract JSON from response
-            try:
-                # Remove markdown code blocks if present
-                if "```json" in response_text:
-                    response_text = response_text.split("```json")[1].split("```")[0]
-                elif "```" in response_text:
-                    response_text = response_text.split("```")[1].split("```")[0]
-
-                recommendations = json.loads(response_text.strip())
-            except json.JSONDecodeError:
-                recommendations = []
+            recommendations = json.loads(raw_text.strip())
+            if not isinstance(recommendations, list) or len(recommendations) == 0:
+                recommendations = fallback_recommendations
 
             return {
                 'recommendations': recommendations,
-                'generated_at': datetime.utcnow().isoformat(),
-                'model': AICoachService.MODEL_NAME
+                'goal': user_goal,
+                'generated_at': now_iso,
+                'source': 'gemini'
             }
         except Exception as e:
-            print(f"AI Coach Error: {str(e)}")
+            print(f"Gemini API Error (recommendations): {e}")
             return {
-                'recommendations': [],
+                'recommendations': fallback_recommendations,
+                'goal': user_goal,
+                'generated_at': now_iso,
+                'source': 'fallback',
                 'error': str(e)
             }
 
-    @staticmethod
-    def analyze_mood_habit_correlation(user_moods, user_habits_completion):
+    @classmethod
+    def analyze_mood_habit_correlation(cls, user_moods: List[Dict[str, Any]], completion_rate: int) -> Dict[str, Any]:
         """
-        Analyze the correlation between mood and habit completion.
-        AI translates statistics into emotional insights.
+        Translates raw mood tracking data and completion statistics into an emotionally
+        intelligent, supportive behavioral insight.
+        
+        Args:
+            user_moods: List of recent mood check-in dictionaries.
+            completion_rate: Overall habit completion percentage.
+            
+        Returns:
+            dict: Insight text, happy percentage, and source.
         """
-        if not AICoachService.is_available():
-            return {'insight': 'Track your mood to unlock AI insights', 'error': 'API not configured'}
+        now_iso = datetime.now(timezone.utc).isoformat()
+
+        happy_count = sum(1 for m in user_moods if m.get('mood') == 'happy')
+        total_moods = len(user_moods)
+        happy_pct = int((happy_count / total_moods) * 100) if total_moods > 0 else 50
+
+        fallback = (
+            f"You have felt positive on {happy_pct}% of tracked days. "
+            "Data demonstrates that regular habits stabilize mood, while small positive rituals build emotional resilience."
+        )
+
+        if not cls.is_available():
+            return {
+                'insight': fallback,
+                'happy_percent': happy_pct,
+                'generated_at': now_iso,
+                'source': 'algorithm'
+            }
 
         try:
-            # Calculate mood stats
-            happy_days = sum(1 for m in user_moods if m['mood'] == 'happy')
-            sad_days = sum(1 for m in user_moods if m['mood'] == 'sad')
-            total_days = len(user_moods)
+            cls._init_genai()
+            prompt = f"""You are an emotional wellbeing coach.
+The user tracked {total_moods} mood days: {happy_count} happy ({happy_pct}%).
+Their current habit completion rate is {completion_rate}%.
 
-            if total_days == 0:
-                return {'insight': 'Log more moods for better insights', 'error': 'Insufficient data'}
+Write an insightful, validating 2-sentence observation connecting their emotional states
+with daily habit practice. Conclude with a compassionate takeaway."""
 
-            happy_percent = (happy_days / total_days) * 100
-
-            prompt = f"""You are an emotional intelligence coach analyzing habit-mood correlations.
-
-Mood Data:
-- Happy days: {happy_days}/{total_days} ({happy_percent:.0f}%)
-- Sad days: {sad_days}/{total_days}
-- Habit completion rate: {user_habits_completion:.0f}%
-
-Generate a 2-3 sentence insight that:
-1. Explains the mood-habit connection
-2. Provides emotional validation
-3. Suggests one micro-action to improve mood through habits
-
-Be warm and psychological, not clinical."""
-
-            model = genai.GenerativeModel(AICoachService.MODEL_NAME)
+            model = genai.GenerativeModel(cls.DEFAULT_MODEL)
             response = model.generate_content(prompt)
-
-            insight = response.text.strip() if response.text else "Your mood and habits are interconnected. Keep tracking to discover patterns."
+            insight = response.text.strip() if response and response.text else fallback
 
             return {
                 'insight': insight,
-                'happy_percent': happy_percent,
-                'generated_at': datetime.utcnow().isoformat()
+                'happy_percent': happy_pct,
+                'generated_at': now_iso,
+                'source': 'gemini'
             }
         except Exception as e:
-            print(f"AI Coach Error: {str(e)}")
+            print(f"Gemini API Error (mood): {e}")
             return {
-                'insight': "Keep tracking your mood and habits to unlock personalized insights.",
+                'insight': fallback,
+                'happy_percent': happy_pct,
+                'generated_at': now_iso,
+                'source': 'fallback',
                 'error': str(e)
             }
 
-    # Helper methods
     @staticmethod
-    def _build_user_context(user_stats, habits):
-        """Build structured context string from user statistics"""
-        context_lines = [
-            f"Total Habits: {user_stats.get('total_habits', 0)}",
-            f"Combined Streak: {user_stats.get('combined_streak', 0)} days",
-            f"Total Completions: {user_stats.get('total_completions', 0)}",
-            f"Consistency Score: {user_stats.get('consistency_score', 0)}%",
-            f"User Level: {user_stats.get('level', 1)}",
+    def _build_user_context(stats: Dict[str, Any], habits: List[Dict[str, Any]]) -> str:
+        """Formats statistics and habits into structured prompt context."""
+        lines = [
+            f"- Active Habits Count: {stats.get('total_habits', 0)}",
+            f"- Combined Streaks: {stats.get('combined_streak', 0)} days",
+            f"- Lifetime Completions: {stats.get('total_completions', 0)}",
+            f"- 30-Day Consistency Score: {stats.get('consistency_score', 0)}%",
+            f"- User Level: {stats.get('level', 1)}"
         ]
-
         if habits:
-            context_lines.append(f"Active Habits: {', '.join([h.get('title', 'Unnamed') for h in habits[:5]])}")
-
-        return '\n'.join(context_lines)
+            titles = [h.get('title', 'Habit') for h in habits[:5]]
+            lines.append(f"- Sample Habits: {', '.join(titles)}")
+        return "\n".join(lines)
 
     @staticmethod
-    def _build_weekly_context(weekly_data):
-        """Build structured context from weekly data"""
-        context_lines = []
-
-        for day in weekly_data:
-            rate = day.get('rate', 0)
-            completed = day.get('completed', 0)
-            context_lines.append(f"{day.get('day', 'Unknown')}: {completed} completed ({rate}%)")
-
-        return '\n'.join(context_lines)
+    def _build_weekly_context(weekly_data: List[Dict[str, Any]]) -> str:
+        """Formats weekly breakdown into structured prompt context."""
+        lines = []
+        for day_item in weekly_data:
+            day_name = day_item.get('day', 'Day')
+            completed = day_item.get('completed', 0)
+            rate = day_item.get('rate', 0)
+            lines.append(f"- {day_name}: {completed} completed ({rate}% rate)")
+        return "\n".join(lines)

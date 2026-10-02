@@ -110,7 +110,7 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <div class="ms-auto">
+                <div class="ms-auto" id="landingNavActions">
                     <a class="btn btn-outline-light me-2" href="/login">Login</a>
                     <a class="btn btn-light" href="/register">Get Started</a>
                 </div>
@@ -127,8 +127,8 @@
                     <p class="lead mb-4 text-white-50">
                         Turn consistency into a superpower. Track your habits, build streaks, and unlock achievements as you level up your life.
                     </p>
-                    <div class="d-flex gap-3">
-                        <a href="/register" class="btn btn-lg btn-light fw-bold text-primary">Start Free</a>
+                    <div class="d-flex gap-3" id="heroCtaContainer">
+                        <a href="/register" id="heroStartBtn" class="btn btn-lg btn-light fw-bold text-primary">Start Free</a>
                         <a href="#features" class="btn btn-lg btn-outline-light">Learn More</a>
                     </div>
                 </div>
@@ -327,11 +327,32 @@
             duration: 800,
             once: true
         });
+
         window.addEventListener('scroll', function() {
             if (window.scrollY > 50) {
                 document.querySelector('.navbar').classList.add('scrolled');
             } else {
                 document.querySelector('.navbar').classList.remove('scrolled');
+            }
+        });
+
+        // Adapt UI if user is already logged in
+        document.addEventListener('DOMContentLoaded', function() {
+            const token = localStorage.getItem('token');
+            if (token) {
+                const navActions = document.getElementById('landingNavActions');
+                if (navActions) {
+                    navActions.innerHTML = `
+                        <a class="btn btn-primary rounded-pill px-3 fw-semibold shadow-sm" href="/dashboard">
+                            <i class="fas fa-chart-line me-1"></i> Go to Dashboard
+                        </a>
+                    `;
+                }
+                const heroBtn = document.getElementById('heroStartBtn');
+                if (heroBtn) {
+                    heroBtn.href = '/dashboard';
+                    heroBtn.textContent = 'Go to Dashboard';
+                }
             }
         });
     </script>

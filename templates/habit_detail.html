@@ -1,299 +1,593 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Habit Detail - HabitFlow</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="/static/css/style.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
-</head>
-<body>
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
-        <div class="container-fluid">
-            <a class="navbar-brand fw-bold" href="/dashboard">
-                <i class="fas fa-rocket"></i> HabitFlow
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <div class="ms-auto">
-                    <a class="btn btn-outline-light" href="/dashboard">Back to Dashboard</a>
-                </div>
-            </div>
-        </div>
-    </nav>
+{% extends "base.html" %}
 
-    <!-- Main Content -->
-    <div class="container py-4">
-        <!-- Habit Header -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center gap-3 mb-3">
-                            <div style="font-size: 3rem;" id="habitIcon">✨</div>
-                            <div>
-                                <h1 id="habitTitle" class="mb-0">Loading...</h1>
-                                <p class="text-muted mb-0" id="habitCategory">Category</p>
-                            </div>
+{% block title %}Habit Detail - HabitFlow{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header Section with Back Navigation and Actions -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <a href="/dashboard" class="btn btn-outline-secondary rounded-pill px-3 shadow-sm d-flex align-items-center gap-2">
+            <i class="fas fa-arrow-left"></i>
+            <span>Back to Dashboard</span>
+        </a>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-primary btn-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#editHabitModal">
+                <i class="fas fa-edit me-1"></i> Edit Habit
+            </button>
+            <button class="btn btn-outline-danger btn-sm rounded-pill px-3" onclick="confirmDeleteCurrentHabit()">
+                <i class="fas fa-trash-alt me-1"></i> Delete Habit
+            </button>
+        </div>
+    </div>
+
+    <!-- Habit Main Profile Card -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div id="habitIcon" class="display-3 p-3 rounded-4 bg-light shadow-sm text-center" style="min-width: 90px;">✨</div>
+                    <div>
+                        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                            <h2 id="habitTitle" class="fw-bold mb-0">Loading...</h2>
+                            <span id="habitCategory" class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill">Category</span>
+                        </div>
+                        <div id="habitSchedule" class="d-flex align-items-center gap-1 flex-wrap text-muted small mt-1">
+                            <!-- Populated dynamically with scheduled days -->
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        <!-- Stats Grid -->
-        <div class="row mb-4 g-3">
-            <div class="col-md-3">
-                <div class="stat-card">
-                    <div class="stat-icon" style="background: linear-gradient(135deg, #667eea, #764ba2);">
-                        🔥
-                    </div>
-                    <div class="stat-content">
-                        <div class="stat-label">Current Streak</div>
-                        <div class="stat-value" id="currentStreak">0</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="stat-card">
-                    <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb, #f5576c);">
-                        👑
-                    </div>
-                    <div class="stat-content">
-                        <div class="stat-label">Longest Streak</div>
-                        <div class="stat-value" id="longestStreak">0</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="stat-card">
-                    <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe, #00f2fe);">
-                        ✅
-                    </div>
-                    <div class="stat-content">
-                        <div class="stat-label">Completions</div>
-                        <div class="stat-value" id="completions">0</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="stat-card">
-                    <div class="stat-icon" style="background: linear-gradient(135deg, #fa709a, #fee140);">
-                        📊
-                    </div>
-                    <div class="stat-content">
-                        <div class="stat-label">Consistency</div>
-                        <div class="stat-value" id="consistency">0%</div>
-                    </div>
+                <!-- Quick Action Buttons for Today -->
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <button id="btnCompleteToday" class="btn btn-success rounded-pill px-3 py-2 d-flex align-items-center gap-1 shadow-sm" onclick="logHabitAction('complete')">
+                        <i class="fas fa-check"></i> Complete Today
+                    </button>
+                    <button id="btnSkipToday" class="btn btn-outline-secondary rounded-pill px-3 py-2 d-flex align-items-center gap-1 shadow-sm" onclick="logHabitAction('skip')">
+                        <i class="fas fa-forward"></i> Skip
+                    </button>
+                    <button id="btnMissToday" class="btn btn-outline-danger rounded-pill px-3 py-2 d-flex align-items-center gap-1 shadow-sm" onclick="logHabitAction('miss')">
+                        <i class="fas fa-times"></i> Miss
+                    </button>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- Charts -->
-        <div class="row mb-4 g-3">
-            <div class="col-lg-6">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Completion Rate (30 Days)</h5>
+    <!-- Stats Grid Row -->
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-lg-3">
+            <div class="stat-card shadow-sm">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #f59e0b, #ef4444);">
+                    🔥
+                </div>
+                <div class="stat-content">
+                    <div class="stat-label">Current Streak</div>
+                    <div class="stat-value" id="currentStreak">0</div>
+                    <small class="text-muted">Unbroken days</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="stat-card shadow-sm">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #8b5cf6, #ec4899);">
+                    👑
+                </div>
+                <div class="stat-content">
+                    <div class="stat-label">Longest Streak</div>
+                    <div class="stat-value" id="longestStreak">0</div>
+                    <small class="text-muted">Personal best record</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="stat-card shadow-sm">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #10b981, #059669);">
+                    ✅
+                </div>
+                <div class="stat-content">
+                    <div class="stat-label">Completions</div>
+                    <div class="stat-value" id="completions">0</div>
+                    <small class="text-muted">Lifetime logs</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="stat-card shadow-sm">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #3b82f6, #6366f1);">
+                    📊
+                </div>
+                <div class="stat-content">
+                    <div class="stat-label">30d Consistency</div>
+                    <div class="stat-value" id="consistency">0%</div>
+                    <small class="text-muted">Adherence score</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-3">Status Breakdown (Last 30 Days)</h5>
+                    <div style="position: relative; height: 260px;">
                         <canvas id="completionChart"></canvas>
                     </div>
                 </div>
             </div>
-            <div class="col-lg-6">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Trend (Last 12 Months)</h5>
+        </div>
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-3">12-Month Completion Trend</h5>
+                    <div style="position: relative; height: 260px;">
                         <canvas id="trendChart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Calendar Heatmap -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Activity Calendar (Last 30 Days)</h5>
-                        <div id="calendarHeatmap" class="calendar-heatmap"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Consistency Metrics -->
-        <div class="row g-3">
-            <div class="col-lg-6">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Consistency Metrics</h5>
-                        <div class="mb-3">
-                            <label class="mb-2">7-Day Consistency: <span id="consistency7d" class="fw-bold">0%</span></label>
-                            <div class="progress">
-                                <div class="progress-bar" id="progress7d" style="width: 0%"></div>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="mb-2">30-Day Consistency: <span id="consistency30d" class="fw-bold">0%</span></label>
-                            <div class="progress">
-                                <div class="progress-bar" id="progress30d" style="width: 0%"></div>
-                            </div>
-                        </div>
-                        <div>
-                            <label class="mb-2">Overall Completion Rate: <span id="completionRate" class="fw-bold">0%</span></label>
-                            <div class="progress">
-                                <div class="progress-bar bg-success" id="progressRate" style="width: 0%"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-6">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Best Performing Days</h5>
-                        <div id="bestDays" class="list-group"></div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Get habit ID from URL
-        const habitId = window.location.pathname.split('/').pop();
+    <!-- 30-Day Activity Heatmap -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                <h5 class="fw-bold mb-0">Activity Calendar (Past 30 Days)</h5>
+                <!-- Heatmap Legend -->
+                <div class="d-flex align-items-center gap-3 small text-muted">
+                    <span class="d-flex align-items-center gap-1"><span class="legend-box bg-success"></span> Completed</span>
+                    <span class="d-flex align-items-center gap-1"><span class="legend-box bg-warning"></span> Skipped</span>
+                    <span class="d-flex align-items-center gap-1"><span class="legend-box bg-danger"></span> Missed</span>
+                    <span class="d-flex align-items-center gap-1"><span class="legend-box bg-light border"></span> None</span>
+                </div>
+            </div>
+            <div id="calendarHeatmap" class="calendar-heatmap-grid py-2"></div>
+        </div>
+    </div>
 
-        async function apiCall(endpoint, method = 'GET', data = null) {
-            const token = localStorage.getItem('token');
-            const options = {
-                method,
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            };
+    <!-- Consistency Metrics and Best Performing Days -->
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-4">Adherence & Retention</h5>
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="fw-semibold">7-Day Consistency</span>
+                            <span id="consistency7d" class="fw-bold text-primary">0%</span>
+                        </div>
+                        <div class="progress" style="height: 10px;">
+                            <div id="progress7d" class="progress-bar bg-primary" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="fw-semibold">30-Day Consistency</span>
+                            <span id="consistency30d" class="fw-bold text-info">0%</span>
+                        </div>
+                        <div class="progress" style="height: 10px;">
+                            <div id="progress30d" class="progress-bar bg-info" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="fw-semibold">Lifetime Completion Rate</span>
+                            <span id="completionRate" class="fw-bold text-success">0%</span>
+                        </div>
+                        <div class="progress" style="height: 10px;">
+                            <div id="progressRate" class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-            if (data && method !== 'GET') {
-                options.body = JSON.stringify(data);
-            }
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-3">Best Performing Weekdays</h5>
+                    <p class="text-muted small mb-3">Days of the week with your highest historical completion frequency:</p>
+                    <div id="bestDays" class="list-group list-group-flush">
+                        <div class="text-muted small text-center py-4">Loading performance breakdown...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-            try {
-                const response = await fetch(endpoint, options);
+<!-- Modal: Edit Habit -->
+<div class="modal fade" id="editHabitModal" tabindex="-1" aria-labelledby="editHabitModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold" id="editHabitModalLabel">Edit Habit</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="editHabitForm" onsubmit="event.preventDefault(); saveHabitEdits();">
+                    <div class="mb-3">
+                        <label for="editHabitTitle" class="form-label fw-semibold">Habit Title</label>
+                        <input type="text" class="form-control" id="editHabitTitle" required maxlength="100">
+                    </div>
 
-                if (response.status === 401) {
-                    window.location.href = '/login';
-                    return null;
-                }
+                    <div class="row g-2 mb-3">
+                        <div class="col-8">
+                            <label for="editHabitCategory" class="form-label fw-semibold">Category</label>
+                            <select class="form-select" id="editHabitCategory">
+                                <option value="health">Health & Wellness</option>
+                                <option value="fitness">Fitness & Movement</option>
+                                <option value="learning">Learning & Growth</option>
+                                <option value="productivity">Productivity & Focus</option>
+                                <option value="general">General Daily Routine</option>
+                            </select>
+                        </div>
+                        <div class="col-4">
+                            <label for="editHabitIcon" class="form-label fw-semibold">Icon / Emoji</label>
+                            <input type="text" class="form-control text-center" id="editHabitIcon" maxlength="4">
+                        </div>
+                    </div>
 
-                return await response.json();
-            } catch (error) {
-                console.error('Error:', error);
-                return null;
-            }
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold d-block">Scheduled Frequency</label>
+                        <div id="editFrequencyOptions" class="d-flex flex-wrap gap-2">
+                            <div class="form-check form-check-inline m-0">
+                                <input class="btn-check" type="checkbox" id="edit-freq-mon" value="monday">
+                                <label class="btn btn-outline-secondary btn-sm rounded-pill" for="edit-freq-mon">Mon</label>
+                            </div>
+                            <div class="form-check form-check-inline m-0">
+                                <input class="btn-check" type="checkbox" id="edit-freq-tue" value="tuesday">
+                                <label class="btn btn-outline-secondary btn-sm rounded-pill" for="edit-freq-tue">Tue</label>
+                            </div>
+                            <div class="form-check form-check-inline m-0">
+                                <input class="btn-check" type="checkbox" id="edit-freq-wed" value="wednesday">
+                                <label class="btn btn-outline-secondary btn-sm rounded-pill" for="edit-freq-wed">Wed</label>
+                            </div>
+                            <div class="form-check form-check-inline m-0">
+                                <input class="btn-check" type="checkbox" id="edit-freq-thu" value="thursday">
+                                <label class="btn btn-outline-secondary btn-sm rounded-pill" for="edit-freq-thu">Thu</label>
+                            </div>
+                            <div class="form-check form-check-inline m-0">
+                                <input class="btn-check" type="checkbox" id="edit-freq-fri" value="friday">
+                                <label class="btn btn-outline-secondary btn-sm rounded-pill" for="edit-freq-fri">Fri</label>
+                            </div>
+                            <div class="form-check form-check-inline m-0">
+                                <input class="btn-check" type="checkbox" id="edit-freq-sat" value="saturday">
+                                <label class="btn btn-outline-secondary btn-sm rounded-pill" for="edit-freq-sat">Sat</label>
+                            </div>
+                            <div class="form-check form-check-inline m-0">
+                                <input class="btn-check" type="checkbox" id="edit-freq-sun" value="sunday">
+                                <label class="btn btn-outline-secondary btn-sm rounded-pill" for="edit-freq-sun">Sun</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="editHabitReminderTime" class="form-label fw-semibold">Daily Reminder Time (Optional)</label>
+                        <input type="time" class="form-control" id="editHabitReminderTime">
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary rounded-pill px-4">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Extract habit ID directly from URL path (/habit/<id>)
+    const habitId = parseInt(window.location.pathname.split('/').filter(Boolean).pop());
+
+    let habitCompletionChartInstance = null;
+    let habitTrendChartInstance = null;
+
+    async function loadHabitDetailView() {
+        checkAuth();
+        if (!habitId || isNaN(habitId)) {
+            window.location.href = '/dashboard';
+            return;
         }
 
-        async function loadHabitDetail() {
-            const response = await apiCall(`/api/analytics/habit/${habitId}`);
-            if (!response) return;
+        const response = await apiCall(`/api/analytics/habit/${habitId}`);
+        if (!response || !response.habit) {
+            showToast('Habit not found or access denied', 'danger');
+            setTimeout(() => { window.location.href = '/dashboard'; }, 1500);
+            return;
+        }
 
-            const habit = response.habit;
-            const stats = response.stats;
-            const history = response.history;
+        const habit = response.habit;
+        const stats = response.stats;
+        const history = response.history || [];
+        const monthlyTrend = response.monthly_trend || [];
+        const bestDaysList = response.best_days || [];
 
-            // Update header
-            document.getElementById('habitTitle').textContent = habit.title;
-            document.getElementById('habitIcon').textContent = habit.icon;
+        // Update Header
+        document.getElementById('habitTitle').textContent = habit.title;
+        document.getElementById('habitIcon').textContent = habit.icon;
+        document.getElementById('habitCategory').textContent = habit.category.toUpperCase();
 
-            // Update stats
-            document.getElementById('currentStreak').textContent = stats.current_streak;
-            document.getElementById('longestStreak').textContent = stats.longest_streak;
-            document.getElementById('completions').textContent = stats.total_completions;
-            document.getElementById('consistency').textContent = stats.consistency_score_30d + '%';
+        // Render Scheduled Frequency Badges
+        const freqContainer = document.getElementById('habitSchedule');
+        freqContainer.innerHTML = (habit.frequency || []).map(day => 
+            `<span class="badge bg-light text-dark border rounded-pill text-capitalize">${day.substring(0, 3)}</span>`
+        ).join('');
 
-            // Update consistency metrics
-            document.getElementById('consistency7d').textContent = stats.consistency_score_7d + '%';
-            document.getElementById('consistency30d').textContent = stats.consistency_score_30d + '%';
-            document.getElementById('completionRate').textContent = stats.completion_rate_30d + '%';
+        // Update Stat Cards
+        document.getElementById('currentStreak').textContent = stats.current_streak;
+        document.getElementById('longestStreak').textContent = stats.longest_streak;
+        document.getElementById('completions').textContent = stats.total_completions;
+        document.getElementById('consistency').textContent = stats.consistency_score_30d + '%';
 
-            document.getElementById('progress7d').style.width = stats.consistency_score_7d + '%';
-            document.getElementById('progress30d').style.width = stats.consistency_score_30d + '%';
-            document.getElementById('progressRate').style.width = stats.completion_rate_30d + '%';
+        // Update Progress Bars
+        document.getElementById('consistency7d').textContent = stats.consistency_score_7d + '%';
+        document.getElementById('progress7d').style.width = stats.consistency_score_7d + '%';
 
-            // Create completion breakdown chart
-            const completed = history.filter(h => h.status === 'completed').length;
-            const skipped = history.filter(h => h.status === 'skipped').length;
-            const missed = history.filter(h => h.status === 'missed').length;
+        document.getElementById('consistency30d').textContent = stats.consistency_score_30d + '%';
+        document.getElementById('progress30d').style.width = stats.consistency_score_30d + '%';
 
-            const ctx = document.getElementById('completionChart');
-            new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Completed', 'Skipped', 'Missed'],
-                    datasets: [{
-                        data: [completed, skipped, missed],
-                        backgroundColor: ['#10b981', '#f59e0b', '#ef4444']
-                    }]
+        document.getElementById('completionRate').textContent = stats.completion_rate_30d + '%';
+        document.getElementById('progressRate').style.width = stats.completion_rate_30d + '%';
+
+        // Render Status Breakdown Doughnut Chart
+        renderStatusDoughnut(history);
+
+        // Render 12-Month Trend Line Chart
+        renderMonthlyTrendChart(monthlyTrend);
+
+        // Render 30-Day Activity Calendar Heatmap
+        renderActivityHeatmap(history);
+
+        // Populate Best Performing Days List
+        renderBestDays(bestDaysList);
+
+        // Pre-fill Edit Modal Fields
+        if (document.getElementById('editHabitTitle')) {
+            document.getElementById('editHabitTitle').value = habit.title || '';
+            document.getElementById('editHabitCategory').value = habit.category || 'general';
+            document.getElementById('editHabitIcon').value = habit.icon || '🎯';
+            document.getElementById('editHabitReminderTime').value = habit.reminder_time ? habit.reminder_time.substring(0, 5) : '';
+
+            const dayKeys = [
+                { id: 'edit-freq-mon', name: 'monday' },
+                { id: 'edit-freq-tue', name: 'tuesday' },
+                { id: 'edit-freq-wed', name: 'wednesday' },
+                { id: 'edit-freq-thu', name: 'thursday' },
+                { id: 'edit-freq-fri', name: 'friday' },
+                { id: 'edit-freq-sat', name: 'saturday' },
+                { id: 'edit-freq-sun', name: 'sunday' }
+            ];
+
+            const currentFreqs = Array.isArray(habit.frequency) ? habit.frequency.map(d => String(d).toLowerCase()) : [];
+            dayKeys.forEach(dk => {
+                const el = document.getElementById(dk.id);
+                if (el) {
+                    el.checked = currentFreqs.includes(dk.name);
+                }
+            });
+        }
+    }
+
+    function renderStatusDoughnut(history) {
+        const completed = history.filter(h => h.status === 'completed').length;
+        const skipped = history.filter(h => h.status === 'skipped').length;
+        const missed = history.filter(h => h.status === 'missed').length;
+        const unlogged = history.filter(h => !['completed', 'skipped', 'missed'].includes(h.status)).length;
+
+        const ctx = document.getElementById('completionChart');
+        if (!ctx) return;
+
+        if (habitCompletionChartInstance) {
+            habitCompletionChartInstance.destroy();
+        }
+
+        habitCompletionChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Completed', 'Skipped', 'Missed', 'None'],
+                datasets: [{
+                    data: [completed, skipped, missed, unlogged],
+                    backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#e5e7eb'],
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+    }
+
+    function renderMonthlyTrendChart(monthlyTrend) {
+        const ctx = document.getElementById('trendChart');
+        if (!ctx) return;
+
+        if (habitTrendChartInstance) {
+            habitTrendChartInstance.destroy();
+        }
+
+        habitTrendChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: monthlyTrend.map(m => m.month),
+                datasets: [{
+                    label: 'Completions',
+                    data: monthlyTrend.map(m => m.completions),
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
                 },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
-                        }
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { precision: 0 }
                     }
                 }
-            });
+            }
+        });
+    }
 
-            // Create calendar heatmap
-            createCalendarHeatmap(history);
+    function renderActivityHeatmap(history) {
+        const container = document.getElementById('calendarHeatmap');
+        if (!container) return;
+
+        if (!history || history.length === 0) {
+            container.innerHTML = '<div class="text-center text-muted py-3">No history available yet</div>';
+            return;
         }
 
-        function createCalendarHeatmap(history) {
-            const container = document.getElementById('calendarHeatmap');
-            const historyMap = {};
+        let html = '<div class="d-flex flex-wrap gap-2">';
+        history.forEach(item => {
+            let bgClass = 'bg-light border text-muted';
+            let labelText = 'Unlogged';
 
-            history.forEach(item => {
-                historyMap[item.date] = item.status;
-            });
-
-            const today = new Date();
-            const startDate = new Date(today);
-            startDate.setDate(today.getDate() - 29);
-
-            let html = '<div style="display: grid; grid-template-columns: repeat(7, 50px); gap: 5px;">';
-
-            for (let i = 0; i < 30; i++) {
-                const date = new Date(startDate);
-                date.setDate(date.getDate() + i);
-                const dateStr = date.toISOString().split('T')[0];
-                const status = historyMap[dateStr] || 'none';
-
-                let bgColor = '#e5e7eb';
-                if (status === 'completed') bgColor = '#10b981';
-                else if (status === 'skipped') bgColor = '#f59e0b';
-                else if (status === 'missed') bgColor = '#ef4444';
-
-                html += `
-                    <div style="width: 50px; height: 50px; background: ${bgColor}; border-radius: 8px;
-                        display: flex; align-items: center; justify-content: center; cursor: pointer;"
-                        title="${dateStr}">
-                        ${date.getDate()}
-                    </div>
-                `;
+            if (item.status === 'completed') {
+                bgClass = 'bg-success text-white shadow-sm';
+                labelText = 'Completed';
+            } else if (item.status === 'skipped') {
+                bgClass = 'bg-warning text-dark shadow-sm';
+                labelText = 'Skipped';
+            } else if (item.status === 'missed') {
+                bgClass = 'bg-danger text-white shadow-sm';
+                labelText = 'Missed';
             }
 
-            html += '</div>';
-            container.innerHTML = html;
+            // Extract day number safely from ISO string YYYY-MM-DD
+            const dayNum = item.date.split('-')[2] || '';
+
+            html += `
+                <div class="calendar-day-tile ${bgClass} rounded-3 d-flex flex-column align-items-center justify-content-center"
+                     style="width: 48px; height: 48px; cursor: pointer; transition: transform 0.2s;"
+                     title="${item.date} (${item.day_name}): ${labelText}">
+                    <span class="fw-bold small">${dayNum}</span>
+                </div>
+            `;
+        });
+        html += '</div>';
+
+        container.innerHTML = html;
+    }
+
+    function renderBestDays(bestDays) {
+        const container = document.getElementById('bestDays');
+        if (!container) return;
+
+        if (!bestDays || bestDays.length === 0) {
+            container.innerHTML = '<div class="text-center text-muted py-3">Log more days to reveal weekday patterns!</div>';
+            return;
         }
 
-        // Initialize
-        document.addEventListener('DOMContentLoaded', loadHabitDetail);
-    </script>
-</body>
-</html>
+        container.innerHTML = bestDays.map((d, idx) => `
+            <div class="list-group-item d-flex justify-content-between align-items-center px-0 py-2 border-0 border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge ${idx === 0 ? 'bg-primary' : 'bg-secondary'} rounded-circle" style="width: 24px; height: 24px; line-height: 16px;">${idx + 1}</span>
+                    <span class="fw-semibold">${d.day}</span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-light text-dark border">${d.completed} completed</span>
+                    <span class="badge bg-success-subtle text-success">${d.rate}% rate</span>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    async function logHabitAction(action) {
+        let endpoint = `/api/habits/${habitId}/${action}`;
+        const res = await apiCall(endpoint, 'POST');
+        if (res) {
+            if (action === 'complete') {
+                confetti({ particleCount: 70, spread: 60, origin: { y: 0.7 } });
+                showToast(`Habit completed! +${res.xp_earned} XP 🎉`, 'success');
+            } else if (action === 'skip') {
+                showToast('Habit excused for today. Streak preserved!', 'info');
+            } else if (action === 'miss') {
+                showToast('Marked as missed. Rebuild momentum tomorrow!', 'warning');
+            }
+            await loadHabitDetailView();
+        }
+    }
+
+    async function confirmDeleteCurrentHabit() {
+        if (!confirm('Are you sure you want to delete this habit?')) return;
+        const res = await apiCall(`/api/habits/${habitId}`, 'DELETE');
+        if (res) {
+            showToast('Habit deleted', 'info');
+            setTimeout(() => { window.location.href = '/dashboard'; }, 1000);
+        }
+    }
+
+    async function saveHabitEdits() {
+        const title = (document.getElementById('editHabitTitle').value || '').trim();
+        if (!title) {
+            showToast('Please enter a habit title.', 'warning');
+            return;
+        }
+
+        const category = document.getElementById('editHabitCategory').value;
+        const icon = (document.getElementById('editHabitIcon').value || '🎯').trim();
+        const reminderTimeVal = document.getElementById('editHabitReminderTime').value;
+
+        const dayKeys = [
+            { id: 'edit-freq-mon', name: 'monday' },
+            { id: 'edit-freq-tue', name: 'tuesday' },
+            { id: 'edit-freq-wed', name: 'wednesday' },
+            { id: 'edit-freq-thu', name: 'thursday' },
+            { id: 'edit-freq-fri', name: 'friday' },
+            { id: 'edit-freq-sat', name: 'saturday' },
+            { id: 'edit-freq-sun', name: 'sunday' }
+        ];
+
+        const frequency = [];
+        dayKeys.forEach(dk => {
+            const el = document.getElementById(dk.id);
+            if (el && el.checked) {
+                frequency.push(dk.name);
+            }
+        });
+
+        if (frequency.length === 0) {
+            showToast('Please select at least one active day per week.', 'warning');
+            return;
+        }
+
+        const payload = {
+            title: title,
+            category: category,
+            icon: icon,
+            frequency: frequency,
+            reminder_time: reminderTimeVal ? reminderTimeVal : null
+        };
+
+        const res = await apiCall(`/api/habits/${habitId}`, 'PUT', payload);
+        if (res && res.habit) {
+            showToast('Habit updated successfully!', 'success');
+            const modalEl = document.getElementById('editHabitModal');
+            if (modalEl) {
+                const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                modal.hide();
+            }
+            await loadHabitDetailView();
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadHabitDetailView);
+</script>
+{% endblock %}

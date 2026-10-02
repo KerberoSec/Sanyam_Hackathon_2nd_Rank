@@ -1,40 +1,48 @@
 #!/bin/bash
-
+# ==============================================================================
 # HabitFlow Quick Setup Script
-# This script sets up the development environment
+# Automatically initializes virtual environment, installs dependencies,
+# and configures the environment file.
+# ==============================================================================
+
+set -e
 
 echo "🚀 HabitFlow - Habit Tracker Setup"
 echo "=================================="
 echo ""
 
-# Create virtual environment
-echo "📦 Creating virtual environment..."
-python3 -m venv venv
+# 1. Create virtual environment if not present
+if [ ! -d "venv" ]; then
+    echo "📦 Creating virtual environment in ./venv..."
+    python3 -m venv venv
+else
+    echo "📦 Virtual environment already exists in ./venv."
+fi
 
-# Activate virtual environment
+# 2. Activate virtual environment
 echo "✅ Activating virtual environment..."
-source venv/bin/activate || . venv\Scripts\activate
+source venv/bin/activate || . venv/bin/activate
 
-# Install dependencies
-echo "📥 Installing dependencies..."
+# 3. Install/upgrade dependencies
+echo "📥 Installing dependencies from requirements.txt..."
+pip install --upgrade pip
 pip install -r requirements.txt
 
-# Create .env file
-echo "⚙️  Creating .env file..."
-cp .env.example .env
+# 4. Create .env file from .env.example if missing
+if [ ! -f ".env" ]; then
+    echo "⚙️  Creating default .env configuration file..."
+    cp .env.example .env
+else
+    echo "⚙️  Existing .env detected, leaving intact."
+fi
 
 echo ""
 echo "🎉 Setup complete!"
 echo ""
-echo "Next steps:"
-echo "1. Edit .env with your MySQL credentials"
-echo "2. Create the MySQL database:"
-echo "   mysql -u root -p"
-echo "   CREATE DATABASE habit_tracker DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-echo ""
-echo "3. Run the application:"
-echo "   python app.py"
-echo ""
-echo "4. Open http://localhost:5000 in your browser"
+echo "Ready to run:"
+echo "1. Activate environment: source venv/bin/activate"
+echo "2. Run test suite:       python3 test_suite.py"
+echo "3. Start web server:     python3 app.py"
+echo "4. Open in browser:      http://localhost:5000"
 echo ""
 echo "Happy habit tracking! 🔥"
