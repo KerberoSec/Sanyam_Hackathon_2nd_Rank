@@ -278,7 +278,7 @@ flowchart TD
     Loop -- No --> Finish
 ```
 
-### Streak Engine Rules:
+### Streak Engine Rules
 1. **Grace Period on Current Date:** If the habit is scheduled for today but not yet logged, the streak from yesterday remains intact. The streak only resets if yesterday was scheduled and neither completed nor excused.
 2. **Frequency Filtering:** If a habit is configured for Monday through Friday, Saturday and Sunday are excluded from the required verification window and will not disrupt streaks.
 3. **Excused Skips:** Logs marked as `skipped` preserve current streak momentum without incrementing the streak count.
@@ -694,7 +694,7 @@ graph TD
     DetailView --> Visuals
 ```
 
-### Highlights of UI/UX Implementation:
+### Highlights of UI/UX Implementation
 * **Zero XSS Exposure:** Every dynamic content rendering into `.innerHTML` passes through an HTML character entity encoder (`escapeHtml`), preventing injection vulnerabilities.
 * **Instant Habit Search:** Client-side real-time fuzzy search responds immediately to keystrokes without reloading or re-fetching.
 * **Smart Filter Tabs:** Filter active habits by status (`All`, `Pending Today`, `Completed Today`) and by category (`Health`, `Fitness`, `Learning`, `Productivity`).
@@ -709,14 +709,14 @@ HabitFlow includes a comprehensive unit and integration test suite (`test_suite.
 
 ```mermaid
 flowchart TD
-    Suite["Automated Test Suite (test_suite.py)"] --> T1["test_health_endpoints"]
-    Suite --> T2["test_user_registration_and_login"]
-    Suite --> T3["test_habit_crud_lifecycle"]
-    Suite --> T4["test_streak_engine_logic"]
-    Suite --> T5["test_gamification_and_leveling"]
-    Suite --> T6["test_mood_tracking_and_correlation"]
-    Suite --> T7["test_ai_coach_and_fallbacks"]
-    Suite --> T8["test_security_and_auth_middleware"]
+    Suite["Automated Test Suite (test_suite.py)"] --> T1["test_health_check"]
+    Suite --> T2["test_user_registration_and_authentication"]
+    Suite --> T3["test_habit_crud_and_status_logging"]
+    Suite --> T4["test_streak_calculation_algorithms"]
+    Suite --> T5["test_gamification_progression_and_leveling"]
+    Suite --> T6["test_mood_tracking_and_analytics"]
+    Suite --> T7["test_ai_coaching_endpoints_and_fallbacks"]
+    Suite --> T8["test_frontend_routes"]
 
     T1 --> Pass["All Tests Passed (Exit Code 0)"]
     T2 --> Pass
@@ -753,8 +753,8 @@ flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/your-username/habitflow.git
-cd habitflow
+git clone https://github.com/KerberoSec/Sanyam_Hackathon_2nd_Rank.git
+cd Sanyam_Hackathon_2nd_Rank
 
 # 2. Run automated setup script (creates venv, installs dependencies, sets up .env)
 chmod +x setup.sh
@@ -811,7 +811,7 @@ pip install gunicorn
 gunicorn -w 4 -b 0.0.0.0:5000 "app:create_app()"
 ```
 
-Sample Nginx Reverse Proxy Block:
+#### Sample Nginx Reverse Proxy Configuration
 ```nginx
 server {
     listen 80;
@@ -874,7 +874,7 @@ HabitFlow/
 
 ## Authors and Connect
 
-Developed and maintained by **Arun Kumar**, **Sourav**, **Anish Thakur**, **Paras Rana**, and **Sanyam**.
+Developed and maintained by **Arun Kumar**, **Sourav**, **Anish Thakur**, and **Paras Rana**.
 
 ### Custom Development & Consulting
 We design and build institutional-grade web applications, behavioral analytics platforms, custom gamification engines, high-performance productivity systems, and secure full-stack infrastructure tailored to your specific product requirements.
