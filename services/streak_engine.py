@@ -9,12 +9,13 @@ Key concepts:
 - Active Streak: A continuous unbroken sequence of scheduled days completed or skipped.
 - Grace Period: If today has not been logged yet, yesterday's streak remains intact
   so the user can complete their habit before midnight without losing progress.
-- Skipped Days: Treated as excused (streak is preserved, consistency credited at 50%).
+- Skipped Days: Treated as excused (streak is preserved without incrementing, consistency credited at 50%).
 - Missed or Unlogged Scheduled Days: Streak resets to zero.
 """
 
-from datetime import datetime, timedelta, date
-from typing import Dict, Any, List, Optional
+from datetime import timedelta, date
+from typing import Dict, Any, List
+from date_utils import current_date
 from models import Habit, HabitLog, User, db
 
 
@@ -22,42 +23,61 @@ class StreakEngine:
     """Service class encapsulating all streak calculation and analytics logic."""
 
     @staticmethod
-    def calculate_current_streak(habit_id: int, user_id: int) -> int:
+    def calculate_current_streak(habit_id: int, user_id: int, as_of: date = None) -> int:
         """
         Calculates the active, unbroken streak for a given habit.
-        
+
         Rules:
-        1. If today is scheduled and logged as 'completed' or 'skipped', today counts toward the streak.
+        1. If today is completed, it increments the streak; if skipped, the existing streak is preserved.
         2. If today is scheduled and logged as 'missed', the streak is broken (0).
         3. If today is scheduled but NOT logged yet, the user has until the end of the day;
            the streak continues from the previous scheduled day.
         4. Non-scheduled days (e.g. weekends for a weekday-only habit) do not break streaks.
         5. Any scheduled past day with status 'missed' or no log at all breaks the streak.
-        
+
         Args:
             habit_id: Identifier of the habit.
             user_id: Identifier of the owner user.
-            
+
         Returns:
             int: The current active streak count in days.
         """
         habit = db.session.get(Habit, habit_id)
         if not habit or habit.user_id != user_id:
             return 0
+        if not habit.active:
+            return 0
 
-        # Retrieve all logs for this habit indexed by date
-        logs = HabitLog.query.filter_by(habit_id=habit_id, user_id=user_id).all()
-        log_map = {log.date: log.status for log in logs}
+        today = as_of or current_date()
+        earliest_log = db.session.query(db.func.min(HabitLog.date)).filter_by(
+            habit_id=habit_id, user_id=user_id
+        ).scalar()
+        earliest_date = habit.created_date or earliest_log or today
+        chunk_start = max(earliest_date, today - timedelta(days=370))
 
-        today = date.today()
+        def load_logs(start_date, end_date):
+            return {
+                log.date: log.status
+                for log in HabitLog.query.filter(
+                    HabitLog.habit_id == habit_id,
+                    HabitLog.user_id == user_id,
+                    HabitLog.date >= start_date,
+                    HabitLog.date <= end_date,
+                ).all()
+            }
+
+        log_map = load_logs(chunk_start, today)
+
         current_streak = 0
 
         # Determine the initial date to evaluate
         if habit.is_scheduled_for_date(today):
             if today in log_map:
                 status = log_map[today]
-                if status in ('completed', 'skipped'):
+                if status == 'completed':
                     current_streak += 1
+                    check_date = today - timedelta(days=1)
+                elif status == 'skipped':
                     check_date = today - timedelta(days=1)
                 elif status == 'missed':
                     # Explicitly missed today resets streak immediately
@@ -71,19 +91,20 @@ class StreakEngine:
             # Today is not scheduled: start checking from yesterday
             check_date = today - timedelta(days=1)
 
-        # Look back up to 365 days
-        max_lookback_days = 365
-        days_evaluated = 0
-
-        while days_evaluated < max_lookback_days:
-            days_evaluated += 1
+        while check_date >= earliest_date:
+            if check_date < chunk_start:
+                chunk_end = chunk_start - timedelta(days=1)
+                chunk_start = max(earliest_date, chunk_end - timedelta(days=370))
+                log_map.update(load_logs(chunk_start, chunk_end))
 
             # Only evaluate days that match the habit's frequency
             if habit.is_scheduled_for_date(check_date):
                 if check_date in log_map:
                     status = log_map[check_date]
-                    if status in ('completed', 'skipped'):
+                    if status == 'completed':
                         current_streak += 1
+                    elif status == 'skipped':
+                        pass
                     else:
                         # Status is 'missed' -> streak is broken
                         break
@@ -102,11 +123,11 @@ class StreakEngine:
         Calculates the all-time longest streak achieved for a habit.
         Iterates chronologically through all days from the earliest log or habit creation
         up to today, evaluating consecutive scheduled days completed or skipped.
-        
+
         Args:
             habit_id: Identifier of the habit.
             user_id: Identifier of the owner user.
-            
+
         Returns:
             int: The maximum streak length ever recorded.
         """
@@ -122,9 +143,9 @@ class StreakEngine:
 
         # Determine start date: earliest log date or habit creation date
         earliest_log_date = min(log.date for log in logs)
-        creation_date = habit.created_at.date() if habit.created_at else earliest_log_date
+        creation_date = habit.created_date or earliest_log_date
         start_date = min(earliest_log_date, creation_date)
-        today = date.today()
+        today = current_date()
 
         longest_streak = 0
         running_streak = 0
@@ -134,10 +155,12 @@ class StreakEngine:
             if habit.is_scheduled_for_date(curr_date):
                 if curr_date in log_map:
                     status = log_map[curr_date]
-                    if status in ('completed', 'skipped'):
+                    if status == 'completed':
                         running_streak += 1
                         if running_streak > longest_streak:
                             longest_streak = running_streak
+                    elif status == 'skipped':
+                        pass
                     else:
                         # Missed resets the running streak
                         running_streak = 0
@@ -154,51 +177,59 @@ class StreakEngine:
     def get_total_completions(habit_id: int, user_id: int) -> int:
         """
         Returns the total lifetime count of completed logs for a habit.
-        
+
         Args:
             habit_id: Identifier of the habit.
             user_id: Identifier of the user.
-            
+
         Returns:
             int: Total completion count.
         """
-        return HabitLog.query.filter_by(
-            habit_id=habit_id,
-            user_id=user_id,
-            status='completed'
+        return HabitLog.query.filter(
+            HabitLog.habit_id == habit_id,
+            HabitLog.user_id == user_id,
+            HabitLog.status == 'completed',
+            HabitLog.date <= current_date(),
         ).count()
 
     @staticmethod
-    def get_habit_history(habit_id: int, user_id: int, days: int = 30) -> List[Dict[str, Any]]:
+    def get_habit_history(habit_id: int, user_id: int, days: int = 30,
+                          as_of: date = None) -> List[Dict[str, Any]]:
         """
         Returns habit completion history for the last N calendar days.
         Provides a continuous list including days without logs (marked as 'unlogged' or 'none').
-        
+
         Args:
             habit_id: Identifier of the habit.
             user_id: Identifier of the user.
             days: Number of past days to include (default 30).
-            
+
         Returns:
             list of dicts: Date, status, and scheduled flag for each day.
         """
         habit = db.session.get(Habit, habit_id)
-        if not habit:
+        if not habit or habit.user_id != user_id:
             return []
 
-        start_date = date.today() - timedelta(days=days - 1)
+        end_date = as_of or current_date()
+        start_date = end_date - timedelta(days=days - 1)
         logs = HabitLog.query.filter(
             HabitLog.habit_id == habit_id,
             HabitLog.user_id == user_id,
-            HabitLog.date >= start_date
+            HabitLog.date >= start_date,
+            HabitLog.date <= end_date
         ).all()
         log_map = {log.date: log.status for log in logs}
 
         history = []
         for i in range(days):
             current_day = start_date + timedelta(days=i)
-            is_scheduled = habit.is_scheduled_for_date(current_day)
-            status = log_map.get(current_day, 'none')
+            is_scheduled = (
+                (habit.created_date is None or current_day >= habit.created_date)
+                and (habit.archived_date is None or current_day <= habit.archived_date)
+                and habit.is_scheduled_for_date(current_day)
+            )
+            status = log_map.get(current_day, 'none') if is_scheduled else 'none'
 
             history.append({
                 'date': current_day.isoformat(),
@@ -218,24 +249,28 @@ class StreakEngine:
           - Skipped scheduled day   = 50%
           - Missed or unlogged day  = 0%
           - Non-scheduled days are excluded from the denominator.
-          
+
         Args:
             habit_id: Identifier of the habit.
             user_id: Identifier of the user.
             days: Lookback window in days (default 30).
-            
+
         Returns:
             int: Consistency percentage (0 to 100).
         """
         habit = db.session.get(Habit, habit_id)
-        if not habit:
+        if not habit or habit.user_id != user_id:
             return 0
 
-        start_date = date.today() - timedelta(days=days - 1)
+        today = current_date()
+        if habit.archived_date:
+            today = min(today, habit.archived_date)
+        start_date = today - timedelta(days=days - 1)
         logs = HabitLog.query.filter(
             HabitLog.habit_id == habit_id,
             HabitLog.user_id == user_id,
-            HabitLog.date >= start_date
+            HabitLog.date >= start_date,
+            HabitLog.date <= today
         ).all()
         log_map = {log.date: log.status for log in logs}
 
@@ -244,8 +279,12 @@ class StreakEngine:
 
         for i in range(days):
             day_to_check = start_date + timedelta(days=i)
+            if habit.created_date and day_to_check < habit.created_date:
+                continue
+            if habit.archived_date and day_to_check > habit.archived_date:
+                continue
             # Skip checking today if not logged yet (to avoid unfairly docking score in morning)
-            if day_to_check == date.today() and day_to_check not in log_map:
+            if day_to_check == today and day_to_check not in log_map:
                 continue
 
             if habit.is_scheduled_for_date(day_to_check):
@@ -268,24 +307,28 @@ class StreakEngine:
         """
         Calculates the pure completion rate (only 'completed' status counts)
         over scheduled days in the past N days.
-        
+
         Args:
             habit_id: Identifier of the habit.
             user_id: Identifier of the user.
             days: Lookback window in days (default 30).
-            
+
         Returns:
             int: Completion percentage (0 to 100).
         """
         habit = db.session.get(Habit, habit_id)
-        if not habit:
+        if not habit or habit.user_id != user_id:
             return 0
 
-        start_date = date.today() - timedelta(days=days - 1)
+        today = current_date()
+        if habit.archived_date:
+            today = min(today, habit.archived_date)
+        start_date = today - timedelta(days=days - 1)
         logs = HabitLog.query.filter(
             HabitLog.habit_id == habit_id,
             HabitLog.user_id == user_id,
-            HabitLog.date >= start_date
+            HabitLog.date >= start_date,
+            HabitLog.date <= today
         ).all()
         log_map = {log.date: log.status for log in logs}
 
@@ -294,7 +337,11 @@ class StreakEngine:
 
         for i in range(days):
             day_to_check = start_date + timedelta(days=i)
-            if day_to_check == date.today() and day_to_check not in log_map:
+            if habit.created_date and day_to_check < habit.created_date:
+                continue
+            if habit.archived_date and day_to_check > habit.archived_date:
+                continue
+            if day_to_check == today and day_to_check not in log_map:
                 continue
 
             if habit.is_scheduled_for_date(day_to_check):
@@ -314,10 +361,10 @@ class StreakEngine:
         Aggregates high-level summary statistics across all active habits for a user.
         Includes total active habits, cumulative lifetime completions, combined current streak,
         average 30-day consistency score, user level, and total XP.
-        
+
         Args:
             user_id: Identifier of the user.
-            
+
         Returns:
             dict: Summary metrics dictionary.
         """
@@ -335,17 +382,20 @@ class StreakEngine:
         active_habits = Habit.query.filter_by(user_id=user_id, active=True).all()
 
         total_streaks = 0
-        total_completions = 0
         consistency_scores = []
 
         for habit in active_habits:
             streak = StreakEngine.calculate_current_streak(habit.id, user_id)
-            completions = StreakEngine.get_total_completions(habit.id, user_id)
             score = StreakEngine.get_consistency_score(habit.id, user_id, days=30)
 
             total_streaks += streak
-            total_completions += completions
             consistency_scores.append(score)
+
+        total_completions = HabitLog.query.filter(
+            HabitLog.user_id == user_id,
+            HabitLog.status == 'completed',
+            HabitLog.date <= current_date(),
+        ).count()
 
         avg_consistency = int(sum(consistency_scores) / len(consistency_scores)) if consistency_scores else 0
 

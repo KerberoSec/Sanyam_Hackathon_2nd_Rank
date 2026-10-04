@@ -1,6 +1,6 @@
-# HabitFlow
+# HabitFlow v3.0.3
 
-> **HabitFlow** is an enterprise-grade, gamified personal habit tracking application and behavioral analytics engine. It seamlessly combines behavioral science, streak intelligence, multi-metric analytics, mood correlation tracking, and AI-driven coaching (powered by Google Gemini with algorithmic fallback) to help individuals build sustainable lifelong routines.
+> **HabitFlow v3.0.3** is a personal habit tracker built with Flask, SQLAlchemy, and a responsive browser interface. It supports scheduled habits, streaks, completion history, mood check-ins, badges, and rule-based coaching.
 
 ---
 
@@ -13,8 +13,8 @@
 5. [Core Algorithms & Business Logic](#core-algorithms--business-logic)
    - [Streak Calculation Engine & Grace Periods](#streak-calculation-engine--grace-periods)
    - [Gamification, Experience (XP) & Leveling](#gamification-experience-xp--leveling)
-   - [AI Coaching & Hybrid Fallback Engine](#ai-coaching--hybrid-fallback-engine)
-   - [Mood-Habit Correlation Analytics](#mood-habit-correlation-analytics)
+   - [Behavioral Science & Coaching Engine](#behavioral-science--coaching-engine)
+   - [Mood and Habit Pattern Comparison](#mood-and-habit-pattern-comparison)
 6. [Authentication, Security & Hardening](#authentication-security--hardening)
 7. [End-to-End Request Lifecycle](#end-to-end-request-lifecycle)
 8. [Comprehensive REST API Reference](#comprehensive-rest-api-reference)
@@ -34,16 +34,18 @@ HabitFlow was built from the ground up to solve the most common challenges in di
 ### Key Capabilities
 
 * **Schedule-Aware Streak Engine:** Automatically differentiates between daily, weekday-only, and custom-scheduled habits. An unlogged habit today never breaks a streak prematurely due to a built-in grace period window.
-* **Dual-Tier AI Coaching:** Leverages Google Gemini 1.5 Flash to synthesize habit progress and mood entries into actionable psychological nudges. If an API key is absent or offline, an intelligent heuristic behavioral coach engine executes seamlessly with zero disruption.
-* **Mood Correlation Engine:** Correlates emotional wellbeing (Happy, Good, Neutral, Low, Stressed) with habit execution rates, revealing which routines drive peak emotional performance.
-* **Gamified Progression System:** Progression driven by deterministic Level curves ($\text{Level} = \lfloor \text{XP} / 100 \rfloor + 1$), rewarding habit completions, milestone streaks, and self-reflection check-ins.
-* **XSS-Hardened Modern UI:** Built with responsive Bootstrap 5, dark mode persistence, Chart.js trend charts, activity heatmaps, live search filtering, and confetti particle animations.
+* **Rule-Based Coaching:** Uses logged activity and simple heuristics to generate daily messages and recommendations. It does not use a remote AI model.
+* **Mood & Habit Patterns:** Compares logged moods with scheduled habit completions. These comparisons describe patterns in a user's own records and do not establish cause and effect.
+* **Gamified Progression:** Levels use the formula $\text{Level} = \lfloor \text{XP} / 100 \rfloor + 1$. XP comes from habit completions, streak milestones, and skipped habits.
+* **Responsive Interface:** Uses Bootstrap 5, dark mode, Chart.js charts, activity heatmaps, search, and completion feedback.
+
+HabitFlow uses **UTC calendar dates** for habit logs, streaks, mood check-ins, and analytics so browser headers cannot shift a user's logging day.
 
 ---
 
 ## High-Level System Architecture
 
-HabitFlow implements a decoupled, monolithic layered architecture designed for scalability, zero-downtime reliability, and straightforward deployment.
+HabitFlow uses a small Flask application with separate route, service, and model modules. SQLite is the default database; deployments can configure another SQLAlchemy-supported database.
 
 ```mermaid
 graph TD
@@ -69,17 +71,16 @@ graph TD
         AIBP["AI Blueprint (/api/ai)"]
     end
 
-    subgraph Service_Layer ["Domain Services Layer (/services)"]
+    subgraph Service_Layer ["Application Services (/services)"]
         StreakEngine["StreakEngine (Schedule-Aware Streaks)"]
         GamificationEngine["Gamification (XP, Levels & Badges)"]
         CoachEngine["CoachEngine (Algorithmic Behavioral Insights)"]
-        AICoach["AICoach (Google Gemini Integration + Cache)"]
+        AICoachService["AICoachService (Rule-Based Coaching)"]
     end
 
-    subgraph Persistence_Layer ["Data & External Services"]
+    subgraph Persistence_Layer ["Data & Storage Layer"]
         SQLAlchemy["SQLAlchemy 2.x ORM"]
         DB[("Database: SQLite or MySQL")]
-        GeminiAPI["Google Gemini Generative AI Service"]
     end
 
     UI <--> |"REST API (JSON / Bearer JWT)"| WSGI
@@ -92,11 +93,10 @@ graph TD
     HabitsBP --> StreakEngine
     HabitsBP --> GamificationEngine
     AnalyticsBP --> StreakEngine
-    MoodBP --> GamificationEngine
     MoodBP --> CoachEngine
-    AIBP --> AICoach
-    AICoach --> CoachEngine
-    AICoach --> GeminiAPI
+    AIBP --> AICoachService
+    AIBP --> CoachEngine
+    AICoachService --> CoachEngine
 
     StreakEngine --> SQLAlchemy
     GamificationEngine --> SQLAlchemy
@@ -108,7 +108,7 @@ graph TD
 
 ## Component & Layered Architecture
 
-HabitFlow strictly adheres to the Separation of Concerns (SoC) principle:
+HabitFlow separates page rendering, API routes, application services, and database models:
 
 ```mermaid
 flowchart LR
@@ -126,7 +126,7 @@ flowchart LR
         SE["Streak Engine"]
         GE["Gamification Engine"]
         CE["Algorithmic Coach Engine"]
-        AI["Gemini LLM Client"]
+        BE["AICoachService"]
     end
 
     subgraph Data_Access ["4. Data Access Layer"]
@@ -140,10 +140,10 @@ flowchart LR
     Data_Access --> Storage[("SQLite / MySQL Engine")]
 ```
 
-1. **Presentation Layer:** Jinja2 templates serve semantic HTML5 views, while modern ES6 client JavaScript handles asynchronous API calls, DOM mutation with strict HTML escaping, and Chart.js state management.
-2. **API & Routing Layer:** Modular Blueprints (`routes/`) validate incoming payloads, verify JWT signatures, enforce rate controls, and format RFC-compliant JSON responses.
-3. **Domain Services Layer:** Dedicated, stateless utility classes (`services/`) encapsulate complex domain logic: streak windows, XP distribution, badge unlocking, and algorithmic fallback coaching.
-4. **Data Access Layer:** Declarative SQLAlchemy models (`models.py`) with connection pooling, automatic indexation, cascade deletions, and database portability across SQLite and MySQL.
+1. **Presentation Layer:** Jinja templates serve the page views. Browser JavaScript calls the API, updates the page, and manages Chart.js visualizations.
+2. **API & Routing Layer:** Blueprints in `routes/` validate requests, verify JWTs, apply database-backed rate limits to sensitive authentication endpoints, and return JSON responses.
+3. **Application Services:** Modules in `services/` calculate streaks and analytics, apply XP and badge rules, and generate rule-based coaching. They use the shared SQLAlchemy session.
+4. **Data Access Layer:** SQLAlchemy models in `models.py` define relationships, uniqueness rules, and indexes. SQLite is the default database; MySQL is also supported.
 
 ---
 
@@ -163,13 +163,13 @@ erDiagram
 
     USERS {
         int id PK
-        string username UK
+        string name
         string email UK
         string password_hash
-        int xp "Default: 0"
+        int xp_points "Default: 0"
         int level "Default: 1"
+        int token_version "Token revocation counter"
         datetime created_at
-        datetime updated_at
     }
 
     HABITS {
@@ -182,8 +182,9 @@ erDiagram
         json frequency "Array of active weekdays"
         time reminder_time "Optional HH:MM"
         boolean active "Soft delete toggle"
+        date created_date "UTC calendar date"
+        date archived_date "Last scheduled UTC date"
         datetime created_at
-        datetime updated_at
     }
 
     HABIT_LOGS {
@@ -192,7 +193,7 @@ erDiagram
         int user_id FK
         date date "Indexed execution date"
         string status "completed | skipped | missed"
-        text notes "Optional reflection notes"
+        int xp_awarded "Idempotent reward total"
         datetime created_at
     }
 
@@ -200,9 +201,8 @@ erDiagram
         int id PK
         int user_id FK
         date date "Indexed log date"
-        string mood "happy | good | neutral | low | stressed"
-        int energy "Scale 1-5"
-        text notes "Optional journal entry"
+        string mood "happy | neutral | sad"
+        text note "Optional journal entry"
         datetime created_at
     }
 
@@ -211,8 +211,6 @@ erDiagram
         string name UK
         string description
         string icon "Visual badge icon"
-        int xp_required "Streak / Completion threshold"
-        datetime created_at
     }
 
     USER_BADGES {
@@ -225,19 +223,19 @@ erDiagram
     AI_MESSAGES {
         int id PK
         int user_id FK
-        string message_type "daily_insight | recommendation | motivation"
+        string message_type "daily | weekly"
         text content "Generated advice or guidance"
-        json metadata_info "Structured insights or suggestions"
         date date "Cache validation date"
-        datetime created_at
+        datetime generated_at
+        boolean cached
     }
 ```
 
 ### Constraints & Indexes
 * **`HABIT_LOGS`:** Unique composite constraint `(habit_id, date)` ensures each habit is logged at most once per calendar date.
-* **`MOODS`:** Unique composite constraint `(user_id, date)` enforces a single primary daily emotional check-in per user.
+* **`MOODS`:** Unique composite constraint `(user_id, date)` enforces a single daily emotional check-in per user.
 * **`USER_BADGES`:** Unique composite constraint `(user_id, badge_id)` guarantees badge award idempotency.
-* **`AI_MESSAGES`:** Unique composite constraint `(user_id, message_type, date)` guarantees single-generation daily caching, minimizing LLM token consumption.
+* **`AI_MESSAGES`:** Unique composite constraint `(user_id, message_type, date)` prevents duplicate cached messages for the same user, type, and date.
 
 ---
 
@@ -294,11 +292,13 @@ flowchart LR
     Action["User Action"] --> CheckAction{Action Type}
     
     CheckAction -- "Complete Habit" --> XP1["+10 Base XP"]
+    CheckAction -- "Skip Habit" --> XPSkip["+5 XP"]
     CheckAction -- "7-Day Streak" --> XP2["+50 Milestone XP"]
-    CheckAction -- "30-Day Streak" --> XP3["+100 Milestone XP"]
-    CheckAction -- "Daily Mood Check-in" --> XP4["+5 Reflection XP"]
+    CheckAction -- "14-Day Streak" --> XP3["+100 Milestone XP"]
+    CheckAction -- "30-Day Streak" --> XP4["+200 Milestone XP"]
     
     XP1 --> AwardXP["Award XP & Persist to User Record"]
+    XPSkip --> AwardXP
     XP2 --> AwardXP
     XP3 --> AwardXP
     XP4 --> AwardXP
@@ -322,62 +322,54 @@ $$\text{Level} = \left\lfloor \frac{\text{Total XP}}{100} \right\rfloor + 1$$
 #### Seeded Badges
 | Badge | Description | Trigger Threshold |
 | :--- | :--- | :--- |
-| **First Step** | Completed your first habit | 1 completion |
-| **Consistent** | Completed 10 habits in total | 10 completions |
-| **Centennial** | Completed 100 habit logs | 100 completions |
-| **First Week** | Completed a habit for 7 days straight | 7-day streak |
-| **Two Weeks Strong** | Maintained a 14-day consecutive streak | 14-day streak |
-| **Monthly Master** | Completed a habit for 30 consecutive days | 30-day streak |
-| **Centurion** | Maintained a 100-day legendary streak | 100-day streak |
-| **Yearly Champion** | Maintained a 365-day streak | 365-day streak |
+| **First Week** | Complete a habit for 7 days straight | 7-day streak |
+| **Two Weeks Strong** | Complete a habit for 14 days straight | 14-day streak |
+| **Monthly Master** | Complete a habit for 30 days straight | 30-day streak |
+| **Getting Started** | Log 10 habit completions | 10 completions |
+| **Habit Builder** | Log 50 habit completions | 50 completions |
+| **Centennial** | Log 100 habit completions | 100 completions |
+| **Consistency King** | Log 200 habit completions | 200 completions |
+| **Yearly Champion** | Log 365 habit completions | 365 completions |
 
 ---
 
-### AI Coaching & Hybrid Fallback Engine
+### Behavioral Science & Coaching Engine
 
-HabitFlow incorporates a resilient multi-tier AI coaching infrastructure. Daily insights are cached in the database for 24 hours to optimize latency and minimize external LLM token consumption.
+Daily coaching messages and habit recommendations are generated by local rule-based services. Daily messages are cached in the database for the current UTC calendar date.
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor User as Client (Web App)
-    participant Route as AI Route (/api/ai/daily-insight)
+    participant Route as AI Route (/api/ai/daily-message)
     participant Cache as DB Cache (AIMessage)
-    participant Gemini as Google Gemini 1.5 Flash
-    participant Fallback as Algorithmic Coach Engine
+    participant Engine as Rule-Based Coaching Service
 
-    User->>Route: GET /api/ai/daily-insight (Bearer Token)
-    Route->>Cache: Query AIMessage for user_id + today + 'daily_insight'
+    User->>Route: GET /api/ai/daily-message (Bearer Token)
+    Route->>Cache: Query AIMessage for user_id + today + 'daily'
     
     alt Valid Cache Found
-        Cache-->>Route: Return cached content & structured metadata
-        Route-->>User: HTTP 200 (Source: "cached")
-    else Cache Miss / Expired
-        Route->>Gemini: Synthesize habit statistics + 7-day mood context
-        alt Gemini API Configured & Successful
-            Gemini-->>Route: Formatted JSON behavioral insight
-            Route->>Cache: Persist AIMessage record
-            Route-->>User: HTTP 200 (Source: "gemini")
-        else API Key Missing, Rate Limit or Network Failure
-            Route->>Fallback: Execute local deterministic heuristic analysis
-            Fallback-->>Route: High-fidelity behavioral insight + structured tips
-            Route->>Cache: Persist AIMessage record
-            Route-->>User: HTTP 200 (Source: "algorithmic_engine")
-        end
+        Cache-->>Route: Return cached content
+        Route-->>User: HTTP 200 (cached: true, source: "cache")
+    else Cache Miss / New Day
+        Route->>Engine: Read streak statistics and active habits
+        Engine-->>Route: Select a coaching message from local rules
+        Route->>Cache: Persist AIMessage record
+        Route-->>User: HTTP 200 (cached: false)
     end
 ```
 
 ---
 
-### Mood-Habit Correlation Analytics
+### Mood and Habit Pattern Comparison
 
-The analytics engine bridges the gap between productivity metrics and emotional wellbeing. For any user, the system evaluates the historical coincidence of habit completions and mood states:
+The mood summary compares completion rates for scheduled habit opportunities on days with logged happy moods and on days with logged neutral or sad moods:
 
-$$\text{Correlation Rate} = \min\left(100\%, \frac{\text{Completions on High-Mood Days}}{\max(1, \text{Total High-Mood Days})} \times 100\right)$$
+$$\text{Happy-Day Completion Rate} = \frac{\text{Completions on Happy-Mood Days}}{\text{Scheduled Habit Opportunities on Happy-Mood Days}} \times 100$$
 
 * Detects user's **Power Days** (weekdays with statistically highest completion frequency).
 * Detects **Comeback Opportunities** (encouraging recovery after missed habits).
-* Correlates physical activity and mindfulness habits directly to mood elevation.
+* These comparisons are descriptive and do not show that mood caused a habit completion or vice versa.
 
 ---
 
@@ -394,9 +386,9 @@ sequenceDiagram
     participant DB as Database
 
     Client->>Auth: POST /api/auth/register (username, email, password)
-    Auth->>Security: Validate email regex & password length (min 6 chars)
-    Auth->>DB: Check uniqueness (username & email)
-    Security->>Security: Generate PBKDF2:SHA256 password hash
+    Auth->>Security: Validate email regex & password length (min 8 chars)
+    Auth->>DB: Check email uniqueness
+    Security->>Security: Generate Werkzeug password hash
     Auth->>DB: Insert User record
     Auth-->>Client: HTTP 201 Created
 
@@ -404,16 +396,16 @@ sequenceDiagram
     Auth->>DB: Fetch user by username or email
     Auth->>Security: werkzeug.check_password_hash()
     Security-->>Auth: Password Validated
-    Auth->>Security: Issue PyJWT with exp (7 days) and iat claims
+    Auth->>Security: Issue PyJWT with exp (30 days) and iat claims
     Auth-->>Client: HTTP 200 (Token, User Profile, Level, XP)
 ```
 
 ### Security Hardening Measures
-1. **Password Hashing:** Utilizes Werkzeug's secure PBKDF2 with SHA-256 and unique per-user salts. Plaintext passwords are never stored or logged.
-2. **JWT Token Lifecycle:** Tokens are signed using HMAC-SHA256 (`HS256`), containing explicit `exp` (7-day validity) and `iat` timestamps. The `@token_required` decorator validates signatures and expiration on protected routes.
-3. **Cross-Site Scripting (XSS) Mitigation:** All dynamic client DOM injections run through an HTML entity encoder (`escapeHtml`), preventing stored XSS from malicious habit titles or journal notes.
+1. **Password Hashing:** Uses Werkzeug's password hashing with a per-user salt. Plaintext passwords are never stored or logged.
+2. **JWT Token Lifecycle:** Tokens are signed using HMAC-SHA256 (`HS256`), containing explicit `exp` (30-day validity) and `iat` timestamps. The `@token_required` decorator validates signatures and expiration on protected routes.
+3. **Cross-Site Scripting (XSS) Mitigation:** Client renderers escape user-controlled text before inserting it into HTML. Recommendations use event listeners rather than embedding values in inline JavaScript.
 4. **SQL Injection Immunity:** All database operations utilize SQLAlchemy parameterized ORM queries; no raw SQL concatenations are used.
-5. **CORS Configuration:** Explicitly controls allowable origins, request methods, and authorization headers via `Flask-CORS`.
+5. **CORS Configuration:** Development allows cross-origin requests; production restricts API origins to the configured HTTPS frontend URL.
 6. **Graceful Error Masking:** Production exceptions are trapped by centralized HTTP handlers, preventing internal stack traces from leaking to clients.
 
 ---
@@ -473,14 +465,15 @@ Content-Type: application/json
 **Response (201 Created):**
 ```json
 {
-  "message": "User registered successfully!",
+  "message": "Account registered successfully!",
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "user": {
     "id": 1,
-    "username": "sanyam",
+    "name": "sanyam",
     "email": "sanyam@example.com",
-    "xp": 0,
-    "level": 1
+    "xp_points": 0,
+    "level": 1,
+    "created_at": "2026-10-01T12:00:00+00:00"
   }
 }
 ```
@@ -498,14 +491,15 @@ Content-Type: application/json
 **Response (200 OK):**
 ```json
 {
-  "message": "Login successful!",
+  "message": "Login successful",
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "user": {
     "id": 1,
-    "username": "sanyam",
+    "name": "sanyam",
     "email": "sanyam@example.com",
-    "xp": 140,
-    "level": 2
+    "xp_points": 140,
+    "level": 2,
+    "created_at": "2026-10-01T12:00:00+00:00"
   }
 }
 ```
@@ -519,18 +513,13 @@ GET /api/auth/profile
 {
   "user": {
     "id": 1,
-    "username": "sanyam",
+    "name": "sanyam",
     "email": "sanyam@example.com",
-    "xp": 140,
+    "xp_points": 140,
     "level": 2,
-    "created_at": "2026-10-01T12:00:00"
-  },
-  "stats": {
-    "total_habits": 5,
-    "active_habits": 5,
-    "total_completions": 42,
-    "longest_streak": 14,
-    "badges_earned": 3
+    "created_at": "2026-10-01T12:00:00+00:00",
+    "badges_count": 3,
+    "habits_count": 5
   }
 }
 ```
@@ -552,16 +541,16 @@ GET /api/habits
       "id": 1,
       "title": "Morning Meditation",
       "category": "health",
-      "icon": "🧘",
+      "icon": "mindfulness",
       "color": "primary",
       "frequency": ["monday", "tuesday", "wednesday", "thursday", "friday"],
-      "reminder_time": "07:30:00",
+      "reminder_time": "07:30",
       "active": true,
       "current_streak": 5,
       "longest_streak": 12,
       "total_completions": 28,
-      "consistency_score": 85.7,
-      "completion_rate": 80.0,
+      "consistency_score": 86,
+      "completion_rate": 80,
       "is_scheduled_today": true,
       "today_status": "completed"
     }
@@ -577,7 +566,7 @@ Content-Type: application/json
 {
   "title": "Read 20 Pages",
   "category": "learning",
-  "icon": "📚",
+  "icon": "reading",
   "color": "success",
   "frequency": ["monday", "wednesday", "friday", "sunday"],
   "reminder_time": "21:00"
@@ -590,22 +579,17 @@ POST /api/habits/1/complete
 Content-Type: application/json
 
 {
-  "date": "2026-10-02",
-  "notes": "Focused chapter on systems architecture."
+  "date": "2026-10-02"
 }
 ```
 **Response (200 OK):**
 ```json
 {
-  "message": "Habit completed! +10 XP earned.",
+  "message": "Habit completed! Well done!",
+  "status": "completed",
   "xp_earned": 10,
   "current_streak": 6,
-  "longest_streak": 12,
-  "user": {
-    "xp": 150,
-    "level": 2
-  },
-  "new_badges": []
+  "badges_unlocked": []
 }
 ```
 
@@ -621,42 +605,36 @@ Content-Type: application/json
 {
   "date": "2026-10-02",
   "mood": "happy",
-  "energy": 5,
-  "notes": "Felt productive, finished core refactoring."
+  "note": "Felt productive, finished core refactoring."
 }
 ```
-**Response (201 Created):**
+**Response (200 OK):**
 ```json
 {
-  "message": "Mood logged successfully! +5 XP earned.",
-  "mood": {
-    "date": "2026-10-02",
-    "mood": "happy",
-    "energy": 5,
-    "notes": "Felt productive, finished core refactoring."
-  },
-  "xp_earned": 5
+  "message": "Mood logged successfully!",
+  "mood": "happy",
+  "label": "Happy",
+  "date": "2026-10-02",
+  "note": "Felt productive, finished core refactoring."
 }
 ```
 
 ---
 
-### 4. AI Coaching Endpoints
+### 4. Coaching Endpoints
 
-#### Get Daily Personalized Insight
+#### Get Daily Coaching Message
 ```http
-GET /api/ai/daily-insight
+GET /api/ai/daily-message
 ```
 **Response (200 OK):**
 ```json
 {
-  "insight": {
-    "message": "Outstanding consistency! Your morning habits directly correlate with elevated focus.",
-    "category": "momentum",
-    "actionable_tip": "Prepare your workspace the night before to reduce friction tomorrow morning."
-  },
-  "source": "gemini",
-  "date": "2026-10-02"
+  "message": "Your routines add up. Choose one small action for today.",
+  "cached": false,
+  "generated_at": "2026-10-03T12:00:00+00:00",
+  "source": "behavioral_engine",
+  "error": null
 }
 ```
 
@@ -664,7 +642,7 @@ GET /api/ai/daily-insight
 
 ## Frontend Architecture & User Experience
 
-The HabitFlow frontend is designed as a high-performance Single-Page-Feel interface that eliminates heavy framework dependencies in favor of native browser standards.
+The HabitFlow frontend uses server-rendered Jinja pages with browser JavaScript for API calls, charts, and interactive updates.
 
 ```mermaid
 graph TD
@@ -699,7 +677,7 @@ graph TD
 * **Instant Habit Search:** Client-side real-time fuzzy search responds immediately to keystrokes without reloading or re-fetching.
 * **Smart Filter Tabs:** Filter active habits by status (`All`, `Pending Today`, `Completed Today`) and by category (`Health`, `Fitness`, `Learning`, `Productivity`).
 * **Visual Data Density:** Combines Chart.js graphs, 30-day activity calendar heatmaps, and consistency percentage meters for instant status recognition.
-* **Persistent Dark Mode:** Full dark mode theming configured via CSS variables and preserved across sessions via `localStorage`.
+* **High-Contrast Theme & 1-Click Toggle:** Fully accessible WCAG AA-compliant high-contrast color system across dark and light modes, with a persistent 1-click theme toggle in the sticky navigation bar and synchronized state across sessions.
 
 ---
 
@@ -772,11 +750,14 @@ Open [http://localhost:5000](http://localhost:5000) in your web browser.
 | Variable | Type | Default Value | Description |
 | :--- | :--- | :--- | :--- |
 | `FLASK_ENV` | String | `development` | Flask runtime environment (`development` or `production`) |
-| `SECRET_KEY` | String | `dev-secret-key-change...` | Secret key used for session cookie signing |
-| `JWT_SECRET_KEY` | String | `dev-jwt-secret-key...` | Cryptographic secret for signing JWT tokens |
+| `SECRET_KEY` | String | Required in production | Unique signing key of at least 32 characters |
+| `JWT_SECRET_KEY` | String | Required in production | Separate unique JWT signing key of at least 32 characters |
 | `DATABASE_URL` | String | `sqlite:///instance/habit_tracker.db` | SQLAlchemy connection URI (SQLite or MySQL) |
-| `GEMINI_API_KEY` | String | `""` | Optional Google Gemini API key for LLM-driven coaching |
-| `DEBUG` | Integer | `1` | Enable or disable Flask interactive debugger |
+| `FRONTEND_URL` | URL | Required in production | HTTPS app URL for production CORS and allowed origins |
+| `MAIL_SERVER` | String | Optional | SMTP host for system notifications (optional) |
+| `MAIL_DEFAULT_SENDER` | String | Optional | Sender address for system notifications (optional) |
+| `APP_HOST_BIND_ADDRESS` | IP address | `127.0.0.1` (Compose) | Host interface for the published Docker port; keep loopback behind a host reverse proxy |
+| `TRUSTED_PROXY_COUNT` | Integer | `0` | Number of trusted proxies that sanitize forwarded client IP headers; only enable when direct access to the app port is blocked |
 
 ---
 
@@ -795,7 +776,7 @@ docker compose logs -f habitflow
 docker compose down
 ```
 
-The containerized app includes health checks, persistent data volumes, and automatically mounts the SQLite instance directory.
+The containerized app includes health checks and a persistent SQLite data volume. Set independent `SECRET_KEY` and `JWT_SECRET_KEY` values and an HTTPS `FRONTEND_URL` in `.env` before starting production. The host port binds to loopback by default for use behind a host reverse proxy. To expose the app directly, set `APP_HOST_BIND_ADDRESS=0.0.0.0` and leave `TRUSTED_PROXY_COUNT=0`. When using a reverse proxy, keep the app port private and set `TRUSTED_PROXY_COUNT` to the number of trusted proxies.
 
 ---
 
@@ -807,9 +788,14 @@ For high-concurrency production deployments:
 # Install Gunicorn WSGI server
 pip install gunicorn
 
-# Launch application with 4 worker processes
-gunicorn -w 4 -b 0.0.0.0:5000 "app:create_app()"
+# Load production secrets and HTTPS FRONTEND_URL from .env.
+# The application port stays private behind the local Nginx proxy.
+export FLASK_ENV=production
+export TRUSTED_PROXY_COUNT=1
+gunicorn -w 4 -b 127.0.0.1:5000 "app:create_app()"
 ```
+
+`FLASK_ENV=production` enables production secret and HTTPS validation. For the single local Nginx proxy shown below, `TRUSTED_PROXY_COUNT=1` lets the authentication rate limiter use the sanitized client IP. Do not expose the Gunicorn port directly while trusting forwarded headers.
 
 #### Sample Nginx Reverse Proxy Configuration
 ```nginx
@@ -835,6 +821,7 @@ server {
 HabitFlow/
 ├── app.py                     # Centralized application factory & error handlers
 ├── config.py                  # Environment-driven configuration & DB URI resolution
+├── date_utils.py              # Centralized UTC calendar date utility helpers
 ├── models.py                  # SQLAlchemy declarative models & badge seed logic
 ├── requirements.txt           # Production Python dependency manifest
 ├── Dockerfile                 # Container image specification (Python 3.11-slim)
@@ -849,25 +836,29 @@ HabitFlow/
 │   ├── analytics.py           # Dashboard metrics, trends, and habit deep dives
 │   ├── mood.py                # Mood check-ins, streaks, and correlation analytics
 │   └── ai.py                  # AI coaching endpoints and response caching
-├── services/                  # Business Logic & Behavioral Domain Engines
+├── services/                  # Application and domain services
 │   ├── __init__.py            # Service layer registry and package exports
 │   ├── streak_engine.py       # Schedule-aware streak calculation engine
 │   ├── gamification.py        # XP formulas, leveling curves, and badge criteria
 │   ├── coach_engine.py        # Algorithmic behavioral psychology heuristics
-│   └── ai_coach.py            # Google Gemini client with fallback integration
+│   └── ai_coach.py            # Rule-based coaching and recommendation service
 ├── static/                    # Frontend Client Static Assets
 │   ├── css/
-│   │   └── style.css          # Core styles, dark mode themes, animations
+│   │   ├── style.css          # Shared styles, accessible dark mode, and tactile 3D effects
+│   │   └── landing.css        # Landing page layout and 3D hero scene
 │   └── js/
-│       ├── app.js             # Consolidated frontend application logic & API client
-│       └── dashboard.js       # Backwards-compatibility adapter
+│       ├── app.js             # Core frontend application logic, state, and API client
+│       └── dashboard.js       # Backwards-compatibility adapter script
 └── templates/                 # Jinja2 Semantic HTML Templates
     ├── base.html              # Base layout with responsive navigation & theme toggle
     ├── index.html             # Landing page with interactive hero and feature showcases
     ├── login.html             # Authentication: User sign-in
     ├── register.html          # Authentication: New user registration
     ├── dashboard.html         # Main dashboard with stats, habit list, AI coach & charts
-    └── habit_detail.html      # Habit deep-dive with calendar heatmap & edit modal
+    ├── habit_detail.html      # Habit deep-dive with calendar heatmap & edit modal
+    ├── about.html             # About page with developer profiles and architecture overview
+    ├── privacy.html           # Application privacy policy & data sovereignty documentation
+    └── terms.html             # Application terms of service documentation
 ```
 
 ---
@@ -876,16 +867,7 @@ HabitFlow/
 
 Developed and maintained by **Arun Kumar**, **Sourav**, **Anish Thakur**, and **Paras Rana**.
 
-### Custom Development & Consulting
-We design and build institutional-grade web applications, behavioral analytics platforms, custom gamification engines, high-performance productivity systems, and secure full-stack infrastructure tailored to your specific product requirements.
-
-* **Full-Stack Web & Mobile Applications:** Modern, responsive web and cross-platform applications built with robust backend frameworks (Python/Flask, FastAPI, Node.js), dynamic interactive frontends (Vanilla ES6, React, Vue, Bootstrap 5), and intuitive, user-centric UX/UI design.
-* **Gamification & Behavioral Analytics Systems:** Custom XP progression algorithms, streak verification engines with grace-period logic, badge unlocking mechanisms, and interactive data visualizations (Chart.js, D3.js) designed to maximize engagement and habit retention.
-* **Real-Time Data Pipelines & Analytics:** Event-driven architectures, automated report generation, data aggregation engines, multi-tier database caching, and custom background processing services for reliable operations.
-* **Scalable Backend APIs & Database Architecture:** High-performance RESTful and GraphQL APIs, relational database modeling (PostgreSQL, MySQL, SQLite), connection pooling, atomic transactions, and automated Dockerized container deployments.
-* **Security, Hardening & Defensive Engineering:** Enterprise-grade security audits, JWT authentication lifecycles with cryptographically signed tokens, PBKDF2/Argon2 password hashing, strict context-aware XSS/CSRF mitigations, and OWASP Top-10 compliance.
-
-If you need a custom web application, gamified productivity tool, data analytics platform, or scalable backend infrastructure built according to your needs, feel free to reach out and connect.
+HabitFlow is built with Flask, SQLAlchemy, SQLite or MySQL, Bootstrap, and browser JavaScript. It provides scheduled habit tracking, mood check-ins, analytics, XP and badges, and rule-based coaching.
 
 ### Connect
 

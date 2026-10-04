@@ -64,6 +64,7 @@
     async function handleLogin() {
         const email = document.getElementById('email').value.trim();
         const password = document.getElementById('password').value;
+        const remember = document.getElementById('remember') ? document.getElementById('remember').checked : true;
         const alertEl = document.getElementById('loginAlert');
         const submitBtn = document.getElementById('loginSubmitBtn');
         const btnText = document.getElementById('loginBtnText');
@@ -78,7 +79,7 @@
             const response = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
+                body: JSON.stringify({ email, password, remember })
             });
 
             const data = await response.json();
@@ -87,7 +88,9 @@
                 localStorage.setItem('token', data.token);
                 localStorage.setItem('user', JSON.stringify(data.user));
                 updateNavbarState();
-                window.location.href = '/dashboard';
+                const nextParam = new URLSearchParams(window.location.search).get('next');
+                const safeNext = (nextParam && nextParam.startsWith('/') && !nextParam.startsWith('//')) ? nextParam : '/dashboard';
+                window.location.href = safeNext;
             } else {
                 alertEl.textContent = data.message || 'Invalid email or password.';
                 alertEl.classList.remove('d-none');

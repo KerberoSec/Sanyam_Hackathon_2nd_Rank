@@ -6,7 +6,7 @@ WORKDIR /app
 
 # Set environment variables
 ENV FLASK_APP=app.py
-ENV FLASK_ENV=production
+ENV FLASK_ENV=development
 ENV PYTHONUNBUFFERED=1
 ENV DATABASE_URL=sqlite:////app/instance/habit_tracker.db
 
@@ -22,18 +22,24 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy entire application
-COPY . .
+# Create unprivileged application user
+RUN useradd -m -u 1001 -s /bin/bash habitflow
 
-# Create instance directory with correct permissions
-RUN mkdir -p /app/instance && chmod -R 777 /app/instance
+# Copy entire application and set ownership
+COPY . .
+RUN mkdir -p /app/instance && \
+    chown -R habitflow:habitflow /app && \
+    chmod 770 /app/instance
 
 # Expose port
 EXPOSE 5000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:5000/health || exit 1
+# Run container as unprivileged user
+USER habitflow
 
-# Run the application
-CMD ["python", "-m", "flask", "run", "--host=0.0.0.0", "--port=5000"]
+# Health check
+HEALTHCHECK --interval=20s --timeout=5s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:5000/api/health || exit 1
+
+# Run the application with production WSGI server
+CMD ["gunicorn", "-w", "2", "-b", "0.0.0.0:5000", "--access-logfile", "-", "app:create_app()"]

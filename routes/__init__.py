@@ -6,7 +6,7 @@ This package exports all Flask route blueprints:
 - habits_bp: Habit definitions and daily completions, skips, and misses.
 - analytics_bp: Dashboard metrics, weekly breakdowns, and monthly trends.
 - mood_bp: Daily emotional check-in entries and wellbeing analytics.
-- ai_bp: Gemini-powered AI coaching, summaries, and recommendations.
+- ai_bp: Rule-based coaching messages, summaries, and recommendations.
 """
 
 from routes.auth import auth_bp

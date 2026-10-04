@@ -8,17 +8,22 @@ This module defines the SQLAlchemy ORM models representing the core domain entit
 - Mood: Daily emotional check-in entries ('happy', 'neutral', 'sad') and notes.
 - Badge: Predefined achievement definitions and unlock milestones.
 - UserBadge: Many-to-many relationship linking unlocked badges to users with timestamps.
-- AIMessage: Cached AI-generated coaching messages, weekly summaries, and insights.
+- AIMessage: Cached coaching messages, weekly summaries, and insights.
 """
 
 import json
 from datetime import datetime, date, timezone
-from typing import List, Dict, Any, Optional
+from typing import Dict, Any
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import event, inspect as sqlalchemy_inspect
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 from werkzeug.security import generate_password_hash, check_password_hash
+from date_utils import current_date
 
 # Initialize the SQLAlchemy database instance
 db = SQLAlchemy()
+
 
 def utc_now() -> datetime:
     """Returns current timezone-aware UTC datetime."""
@@ -39,6 +44,7 @@ class User(db.Model):
     password_hash = db.Column(db.Text, nullable=False)
     xp_points = db.Column(db.Integer, default=0, nullable=False)
     level = db.Column(db.Integer, default=1, nullable=False)
+    token_version = db.Column(db.Integer, default=1, nullable=False)
     created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
 
     # Relationships with cascade deletion for data integrity
@@ -51,7 +57,7 @@ class User(db.Model):
     def set_password(self, password: str) -> None:
         """
         Hashes the provided plain text password using Werkzeug's secure hashing.
-        
+
         Args:
             password: Plain text password to hash.
         """
@@ -60,10 +66,10 @@ class User(db.Model):
     def check_password(self, password: str) -> bool:
         """
         Verifies if the provided plain text password matches the stored password hash.
-        
+
         Args:
             password: Plain text password to verify.
-            
+
         Returns:
             bool: True if password matches hash, False otherwise.
         """
@@ -73,7 +79,7 @@ class User(db.Model):
         """
         Serializes user model data into a dictionary suitable for JSON responses.
         Excludes sensitive information such as password hash.
-        
+
         Returns:
             dict: User data summary.
         """
@@ -99,7 +105,7 @@ class Habit(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
     title = db.Column(db.String(255), nullable=False)
     category = db.Column(db.String(100), default='general', nullable=False)
-    icon = db.Column(db.String(50), default='✨', nullable=False)
+    icon = db.Column(db.String(50), default='star', nullable=False)
     color = db.Column(db.String(20), default='primary', nullable=False)
     frequency = db.Column(
         db.JSON,
@@ -108,6 +114,8 @@ class Habit(db.Model):
     )
     reminder_time = db.Column(db.Time, nullable=True)
     active = db.Column(db.Boolean, default=True, nullable=False)
+    created_date = db.Column(db.Date, default=current_date, nullable=False, index=True)
+    archived_date = db.Column(db.Date, nullable=True, index=True)
     created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
 
     # Relationship to habit logs
@@ -117,10 +125,10 @@ class Habit(db.Model):
         """
         Determines whether this habit is scheduled to be performed on the given date
         based on the days specified in its frequency list.
-        
+
         Args:
             target_date: The date to check against habit frequency.
-            
+
         Returns:
             bool: True if the habit is scheduled for this weekday, False otherwise.
         """
@@ -134,17 +142,20 @@ class Habit(db.Model):
             except Exception:
                 freq = []
 
-        if not freq or not isinstance(freq, list):
-            # Default to everyday if frequency is unspecified or malformed
-            return True
+        if not isinstance(freq, list) or not freq:
+            return False
 
-        freq_lower = [str(d).strip().lower() for d in freq]
+        valid_days = set(weekday_names)
+        freq_lower = [
+            d.strip().lower() for d in freq
+            if isinstance(d, str) and d.strip().lower() in valid_days
+        ]
         return day_name in freq_lower
 
     def to_dict(self) -> Dict[str, Any]:
         """
         Serializes habit attributes into a JSON-friendly dictionary.
-        
+
         Returns:
             dict: Habit metadata.
         """
@@ -153,7 +164,14 @@ class Habit(db.Model):
             try:
                 freq = json.loads(freq)
             except Exception:
-                freq = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+                freq = []
+        valid_days = {'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'}
+        if not isinstance(freq, list):
+            freq = []
+        freq = list(dict.fromkeys(
+            day.strip().lower() for day in freq
+            if isinstance(day, str) and day.strip().lower() in valid_days
+        ))
 
         return {
             'id': self.id,
@@ -165,6 +183,8 @@ class Habit(db.Model):
             'frequency': freq,
             'reminder_time': self.reminder_time.strftime('%H:%M') if self.reminder_time else None,
             'active': self.active,
+            'created_date': self.created_date.isoformat() if self.created_date else None,
+            'archived_date': self.archived_date.isoformat() if self.archived_date else None,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
 
@@ -184,6 +204,9 @@ class HabitLog(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
     date = db.Column(db.Date, nullable=False, index=True)
     status = db.Column(db.String(20), default='completed', nullable=False)
+    # -1 marks a completed log finalized by the legacy migration; new records
+    # store the cumulative XP amount awarded for idempotent retries.
+    xp_awarded = db.Column(db.Integer, default=0, nullable=False)
     created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
 
     # Unique constraint ensuring only one log per habit per calendar day
@@ -194,7 +217,7 @@ class HabitLog(db.Model):
     def to_dict(self) -> Dict[str, Any]:
         """
         Serializes habit log into dictionary format.
-        
+
         Returns:
             dict: Log details.
         """
@@ -204,8 +227,31 @@ class HabitLog(db.Model):
             'user_id': self.user_id,
             'date': self.date.isoformat() if self.date else None,
             'status': self.status,
+            'xp_awarded': self.xp_awarded or 0,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
+
+
+@event.listens_for(Session, 'before_flush')
+def _validate_habit_log_owner(session, flush_context, instances):
+    """Prevent ORM writes from attaching a log to another user's habit."""
+    for log in session.new.union(session.dirty):
+        if not isinstance(log, HabitLog):
+            continue
+
+        state = sqlalchemy_inspect(log)
+        relationship_changed = state.attrs.habit.history.has_changes()
+        if relationship_changed:
+            habit = log.habit
+        elif log.habit_id is not None:
+            # Resolve by the foreign-key value so direct changes to habit_id
+            # cannot be hidden by a previously loaded relationship object.
+            habit = session.get(Habit, log.habit_id)
+        else:
+            habit = log.habit
+
+        if habit is not None and log.user_id is not None and habit.user_id != log.user_id:
+            raise ValueError('A habit log must belong to the same user as its habit.')
 
 
 class Mood(db.Model):
@@ -230,7 +276,7 @@ class Mood(db.Model):
     def to_dict(self) -> Dict[str, Any]:
         """
         Serializes mood check-in data into a JSON dictionary.
-        
+
         Returns:
             dict: Mood log summary.
         """
@@ -263,7 +309,7 @@ class Badge(db.Model):
     def to_dict(self) -> Dict[str, Any]:
         """
         Serializes badge definition into dictionary format.
-        
+
         Returns:
             dict: Badge details.
         """
@@ -296,7 +342,7 @@ class UserBadge(db.Model):
     def to_dict(self) -> Dict[str, Any]:
         """
         Serializes user badge achievement into dictionary format.
-        
+
         Returns:
             dict: Badge achievement record with badge details.
         """
@@ -312,8 +358,8 @@ class UserBadge(db.Model):
 
 class AIMessage(db.Model):
     """
-    Stores AI-generated coaching messages, performance reviews, and behavioral insights.
-    Caches outputs by date and message type to minimize external API costs and latency.
+    Stores rule-based coaching messages, performance reviews, and activity summaries.
+    Caches outputs by date and message type to avoid repeating calculations.
     """
     __tablename__ = 'ai_messages'
 
@@ -321,7 +367,7 @@ class AIMessage(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
     message_type = db.Column(db.String(50), nullable=False)  # 'daily', 'weekly', 'recommendation', 'mood_insight'
     content = db.Column(db.Text, nullable=False)
-    date = db.Column(db.Date, default=date.today, nullable=False, index=True)
+    date = db.Column(db.Date, default=current_date, nullable=False, index=True)
     generated_at = db.Column(db.DateTime, default=utc_now, nullable=False)
     cached = db.Column(db.Boolean, default=True, nullable=False)
 
@@ -333,7 +379,7 @@ class AIMessage(db.Model):
     def to_dict(self) -> Dict[str, Any]:
         """
         Serializes AI message into dictionary format.
-        
+
         Returns:
             dict: AI coaching message metadata.
         """
@@ -348,6 +394,15 @@ class AIMessage(db.Model):
         }
 
 
+class RateLimitBucket(db.Model):
+    """Shared fixed-window counters for auth rate limits across app workers."""
+    __tablename__ = 'auth_rate_limit_buckets'
+
+    bucket_key = db.Column(db.String(64), primary_key=True)
+    attempts = db.Column(db.Integer, nullable=False, default=0)
+    expires_at = db.Column(db.Integer, nullable=False, index=True)
+
+
 def seed_default_badges() -> None:
     """
     Initializes standard achievement badges in the database if they do not yet exist.
@@ -358,67 +413,73 @@ def seed_default_badges() -> None:
         {
             'name': 'First Week',
             'description': 'Complete a habit for 7 days straight',
-            'icon': '🔥',
+            'icon': 'streak',
             'category': 'streak'
         },
         {
             'name': 'Two Weeks Strong',
             'description': 'Complete a habit for 14 days straight',
-            'icon': '💪',
+            'icon': 'strength',
             'category': 'streak'
         },
         {
             'name': 'Monthly Master',
             'description': 'Complete a habit for 30 days straight',
-            'icon': '👑',
+            'icon': 'master',
             'category': 'streak'
         },
         # Completion-based badges
         {
             'name': 'Getting Started',
             'description': 'Log 10 habit completions',
-            'icon': '🚀',
+            'icon': 'starter',
             'category': 'completion'
         },
         {
             'name': 'Habit Builder',
             'description': 'Log 50 habit completions',
-            'icon': '🏗️',
+            'icon': 'builder',
             'category': 'completion'
         },
         {
             'name': 'Centennial',
             'description': 'Log 100 habit completions',
-            'icon': '💯',
+            'icon': 'century',
             'category': 'completion'
         },
         {
             'name': 'Consistency King',
             'description': 'Log 200 habit completions',
-            'icon': '👑',
+            'icon': 'consistency',
             'category': 'completion'
         },
         {
             'name': 'Yearly Champion',
             'description': 'Log 365 habit completions',
-            'icon': '🎯',
+            'icon': 'champion',
             'category': 'completion'
         }
     ]
 
-    for badge_data in default_badges:
-        existing = Badge.query.filter_by(name=badge_data['name']).first()
-        if not existing:
-            badge = Badge(
-                name=badge_data['name'],
-                description=badge_data['description'],
-                icon=badge_data['icon'],
-                category=badge_data['category']
-            )
-            db.session.add(badge)
+    for attempt in range(2):
+        for badge_data in default_badges:
+            existing = Badge.query.filter_by(name=badge_data['name']).first()
+            if not existing:
+                db.session.add(Badge(**badge_data))
+            else:
+                existing.description = badge_data['description']
+                existing.icon = badge_data['icon']
+                existing.category = badge_data['category']
 
-    try:
-        db.session.commit()
-    except Exception as e:
-        db.session.rollback()
-        print(f"Warning: Failed to seed default badges: {e}")
+        try:
+            db.session.commit()
+            return
+        except IntegrityError:
+            # Multiple Gunicorn workers may seed at the same time. Roll back
+            # the losing insert and retry after the winning worker commits.
+            db.session.rollback()
+            if attempt:
+                raise
+        except Exception:
+            db.session.rollback()
+            raise

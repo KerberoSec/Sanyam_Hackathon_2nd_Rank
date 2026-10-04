@@ -1,405 +1,391 @@
-"""
-HabitFlow AI Coach Service
-==========================
-This service leverages Google Gemini generative AI to provide personalized,
-adaptive behavioral coaching, habit recommendations, weekly performance reviews,
-and emotional correlation insights.
+"""Rule-based coaching messages, habit suggestions, and activity comparisons."""
 
-Graceful Degradation:
-If the Gemini API key is not configured, the network is unavailable, or quota limits
-are exceeded, the service seamlessly falls back to dynamic, algorithmic coaching advice
-generated from actual user metrics and behavioral science principles.
-"""
-
-import os
-import json
-import re
-from datetime import datetime, date, timezone
-from typing import Dict, Any, List, Optional
-
-# Attempt to import Google Generative AI library
-try:
-    import google.generativeai as genai
-    GENAI_AVAILABLE = True
-except ImportError:
-    genai = None
-    GENAI_AVAILABLE = False
+from datetime import datetime, timezone
+from typing import Dict, Any, List
+from date_utils import current_date
 
 
 class AICoachService:
-    """Service class managing AI-powered coaching interactions."""
+    """Generate deterministic coaching from the user's logged activity."""
 
-    DEFAULT_MODEL = "gemini-1.5-flash"
+    ENGINE_VERSION = "3.0.3"
+    ENGINE_NAME = "HabitFlow Behavioral Engine"
 
-    # Fallback message templates categorized by coaching interaction type
+    # Curated habit ideas grouped by common goals.
+    GOAL_FRAMEWORKS = {
+        'sleep': [
+            {
+                'title': 'Take a Screen Break Before Bed',
+                'category': 'health',
+                'icon': 'moon',
+                'duration': '30 mins',
+                'frequency': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+                'why': 'A quieter period before bed can make it easier to settle into your evening routine.'
+            },
+            {
+                'title': 'Make Your Bedroom Comfortable for Sleep',
+                'category': 'health',
+                'icon': 'sleep',
+                'duration': '1 min',
+                'frequency': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+                'why': 'Adjust the room to a temperature and light level that feels comfortable to you.'
+            },
+            {
+                'title': 'Choose a Calming Evening Drink',
+                'category': 'health',
+                'icon': 'wellness',
+                'duration': '5 mins',
+                'frequency': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+                'why': 'A familiar caffeine-free drink can be part of a calming evening routine.'
+            }
+        ],
+        'productivity': [
+            {
+                'title': 'Identify Top 1 Priority Before Noon',
+                'category': 'productivity',
+                'icon': 'timer',
+                'duration': '3 mins',
+                'frequency': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+                'why': 'Choosing one priority gives you a clear place to start.'
+            },
+            {
+                'title': '25-Minute Focused Deep Sprint',
+                'category': 'productivity',
+                'icon': 'timer',
+                'duration': '25 mins',
+                'frequency': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+                'why': 'A short timed session can help you give one task your attention.'
+            },
+            {
+                'title': 'Write Down Tomorrow’s First Task',
+                'category': 'productivity',
+                'icon': 'planning',
+                'duration': '5 mins',
+                'frequency': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+                'why': 'A brief end-of-day note makes it easier to find your starting point tomorrow.'
+            }
+        ],
+        'fitness': [
+            {
+                'title': 'Morning 10 Push-ups or Mobility',
+                'category': 'fitness',
+                'icon': 'mobility',
+                'duration': '3 mins',
+                'frequency': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'],
+                'why': 'A short movement break is a simple way to add activity to your day.'
+            },
+            {
+                'title': '20-Minute Post-Lunch Brisk Walk',
+                'category': 'fitness',
+                'icon': 'walking',
+                'duration': '20 mins',
+                'frequency': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+                'why': 'A short walk after lunch adds movement to your daily routine.'
+            },
+            {
+                'title': 'Drink a Glass of Water',
+                'category': 'health',
+                'icon': 'hydration',
+                'duration': '1 min',
+                'frequency': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+                'why': 'Keeping water nearby can serve as a simple reminder to drink.'
+            }
+        ],
+        'mindfulness': [
+            {
+                'title': 'Box Breathing 4-4-4-4 for 3 Mins',
+                'category': 'health',
+                'icon': 'mindfulness',
+                'duration': '3 mins',
+                'frequency': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+                'why': 'A paced breathing exercise offers a short pause in your day.'
+            },
+            {
+                'title': 'Gratitude Log 3 Specific Micro-Wins',
+                'category': 'learning',
+                'icon': 'planning',
+                'duration': '4 mins',
+                'frequency': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+                'why': 'Writing down a few small wins gives you a place to notice what went well.'
+            },
+            {
+                'title': 'Unplugged 10-Minute Mindful Walk',
+                'category': 'health',
+                'icon': 'walking',
+                'duration': '10 mins',
+                'frequency': ['monday', 'wednesday', 'friday', 'sunday'],
+                'why': 'A screen-free walk gives you a short break from your devices.'
+            }
+        ],
+        'learning': [
+            {
+                'title': 'Read 10 Pages of Non-Fiction',
+                'category': 'learning',
+                'icon': 'planning',
+                'duration': '15 mins',
+                'frequency': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+                'why': 'A small reading goal makes it easier to keep learning on your schedule.'
+            },
+            {
+                'title': 'Summarize 1 Key Concept in Your Own Words',
+                'category': 'learning',
+                'icon': 'planning',
+                'duration': '5 mins',
+                'frequency': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+                'why': 'Explaining a concept in your own words is a useful way to review it.'
+            },
+            {
+                'title': 'Practice Active Skill Drill for 15 Mins',
+                'category': 'productivity',
+                'icon': 'timer',
+                'duration': '15 mins',
+                'frequency': ['monday', 'wednesday', 'friday'],
+                'why': 'A short practice session gives you time to work on one part of a skill.'
+            }
+        ]
+    }
+
+    # Core motivational guidance bank categorized by state
     FALLBACK_MESSAGES = {
         'daily': "Keep your momentum going! Every single completion lays another brick in your foundation of consistency.",
         'weekly': "Great effort this week! Consistency compounds over time. Celebrate your wins and set your intentions for next week.",
         'recommendation': "Start small with a micro-habit (<2 minutes). Anchor it immediately to an existing daily routine.",
-        'mood': "Your emotional wellbeing and physical habits are intimately linked. Prioritize self-care on low-energy days."
+        'mood': "Mood and routine patterns can vary together. Use your check-ins as personal context, and be kind to yourself on harder days."
     }
-
-    @staticmethod
-    def get_api_key() -> Optional[str]:
-        """
-        Retrieves the Gemini API key from environment variables.
-        
-        Returns:
-            str or None: Configured API key if present.
-        """
-        return os.environ.get('GEMINI_API_KEY', None)
-
-    @classmethod
-    def is_available(cls) -> bool:
-        """
-        Verifies whether the Gemini library is installed and an API key is provided.
-        
-        Returns:
-            bool: True if AI generation can be attempted, False otherwise.
-        """
-        api_key = cls.get_api_key()
-        return bool(GENAI_AVAILABLE and api_key and api_key.strip() and not api_key.startswith('your-'))
-
-    @classmethod
-    def _init_genai(cls) -> bool:
-        """
-        Initializes and configures the Gemini SDK with the active API key.
-        
-        Returns:
-            bool: True if initialization succeeded, False otherwise.
-        """
-        if not cls.is_available():
-            return False
-        try:
-            genai.configure(api_key=cls.get_api_key())
-            return True
-        except Exception as e:
-            print(f"Warning: Failed to configure Gemini API: {e}")
-            return False
 
     @classmethod
     def generate_daily_coach_message(cls, user_stats: Dict[str, Any], user_habits: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
-        Generates a concise, personalized daily motivation message based on user stats.
-        
+        Synthesizes active habits, longest and current streaks, and psychological
+        principles into a tailored daily coaching directive.
+
         Args:
-            user_stats: Dictionary containing total habits, completions, streak, consistency score.
-            user_habits: List of active habit dictionaries.
-            
+            user_stats: Aggregate user statistics (streaks, completions, consistency).
+            user_habits: Active habits currently tracked.
+
         Returns:
-            dict: Generated message, timestamp, model used, or fallback message.
+            dict: Generated coaching message with metadata.
         """
-        now_iso = datetime.now(timezone.utc).isoformat()
+        current = user_stats.get('combined_streak', user_stats.get('total_streak_days', 0))
+        total_comps = user_stats.get('total_completions', 0)
+        consistency = user_stats.get('consistency_score', user_stats.get('consistency_30d', 0))
+        habit_count = len(user_habits)
 
-        # Dynamic fallback based on real stats
-        streak = user_stats.get('combined_streak', 0)
-        completions = user_stats.get('total_completions', 0)
-        consistency = user_stats.get('consistency_score', 0)
+        weekday_name = current_date().strftime("%A")
 
-        if streak > 14:
-            fallback = f"Incredible consistency! With a {streak}-day combined streak and {consistency}% consistency, your habit loops are deeply ingrained. Keep this powerhouse momentum going today!"
-        elif streak > 3:
-            fallback = f"You're building solid traction with {streak} consecutive streak days! Focus on executing your key habits today to keep the fire burning."
-        elif completions > 0:
-            fallback = f"Every day is a fresh opportunity to build upon your {completions} lifetime completions. Pick your most important habit first and conquer it early today!"
+        # Select a message from the user's current activity summary.
+        if habit_count == 0:
+            msg = (
+                "Welcome to HabitFlow! The secret of getting ahead is getting started. "
+                "Create your first micro-habit today to activate your streak engine."
+            )
+        elif current == 0 and total_comps == 0:
+            msg = (
+                f"Happy {weekday_name}! You have {habit_count} active habit{'s' if habit_count > 1 else ''}. "
+                "Pick one small action to make your first check-in simple."
+            )
+        elif current >= 30:
+            msg = (
+                f"Your active streaks add up to {current} days across your routines. "
+                "Keep today's next step manageable and repeatable."
+            )
+        elif current >= 14:
+            msg = (
+                f"Your routines add up to {current} active streak days. "
+                "Keep the next step easy to start."
+            )
+        elif current >= 7:
+            msg = f"Your active streaks add up to {current} days. Choose one routine and keep its next step manageable."
+        elif consistency >= 75:
+            msg = (
+                f"Your 30-day consistency score is {consistency}%. "
+                f"Choose one upcoming habit and make it easy to start this {weekday_name}."
+            )
+        elif current > 0:
+            msg = (
+                f"Active momentum: {current} streak day{'s' if current > 1 else ''} in motion! "
+                "Small, repeatable actions can be easier to maintain than occasional bursts."
+            )
         else:
-            fallback = "The journey of a thousand miles begins with a single step. Complete just one habit today to ignite your very first streak!"
+            msg = (
+                "Every day is a fresh opportunity to reset and reignite your routines. "
+                "Select your most accessible habit and log it early to rebuild momentum."
+            )
 
-        if not cls.is_available():
-            return {
-                'message': fallback,
-                'generated_at': now_iso,
-                'cached': False,
-                'source': 'algorithm'
-            }
-
-        try:
-            cls._init_genai()
-            context = cls._build_user_context(user_stats, user_habits)
-            prompt = f"""You are a warm, supportive, and scientifically grounded habit coach.
-Analyze the user's current progress:
-{context}
-
-Generate a concise, encouraging daily message (2 to 3 sentences maximum):
-1. Acknowledge their specific progress or encourage their fresh start.
-2. Provide ONE actionable behavioral tip (e.g. habit stacking, 2-minute rule, or implementation intention).
-3. Keep the tone inspiring, direct, and human. Avoid clichés and generic platitudes."""
-
-            model = genai.GenerativeModel(cls.DEFAULT_MODEL)
-            response = model.generate_content(prompt)
-            message = response.text.strip() if response and response.text else fallback
-
-            return {
-                'message': message,
-                'generated_at': now_iso,
-                'cached': False,
-                'source': 'gemini'
-            }
-        except Exception as e:
-            print(f"Gemini API Error (daily): {e}")
-            return {
-                'message': fallback,
-                'generated_at': now_iso,
-                'cached': False,
-                'source': 'fallback',
-                'error': str(e)
-            }
+        return {
+            'message': msg,
+            'source': 'behavioral_engine',
+            'generated_at': datetime.now(timezone.utc).isoformat(),
+            'error': None
+        }
 
     @classmethod
     def generate_weekly_summary(cls, user_stats: Dict[str, Any], user_habits: List[Dict[str, Any]],
                                 weekly_data: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
-        Generates a comprehensive weekly performance review analyzing consistency,
-        identifying strongest days, and offering tactical behavioral advice.
-        
+        Synthesizes weekly performance metrics into a reflective summary.
+
         Args:
-            user_stats: Summary user statistics.
-            user_habits: Active habits list.
-            weekly_data: Day-by-day weekly breakdown from analytics.
-            
+            user_stats: Aggregate user metrics.
+            user_habits: Active habits.
+            weekly_data: 7-day completion and skip tallies.
+
         Returns:
-            dict: Summary text, timestamp, and source.
+            dict: Structured weekly performance summary.
         """
-        now_iso = datetime.now(timezone.utc).isoformat()
+        total_completed_this_week = sum(d.get('completed', 0) for d in weekly_data)
+        total_skipped_this_week = sum(d.get('skipped', 0) for d in weekly_data)
 
-        # Dynamic fallback review
-        total_completions = sum(d.get('completed', 0) for d in weekly_data)
-        best_day = max(weekly_data, key=lambda d: d.get('completed', 0)) if weekly_data else None
-        best_day_str = best_day.get('day', 'midweek') if best_day else 'midweek'
+        best_day = "mid-week"
+        max_c = -1
+        for d in weekly_data:
+            if d.get('completed', 0) > max_c:
+                max_c = d.get('completed', 0)
+                best_day = d.get('day', 'mid-week')
 
-        fallback = (
-            f"Weekly Performance Review: You recorded {total_completions} completions this past week, "
-            f"with {best_day_str} standing out as your strongest day. "
-            "To sustain this momentum next week, prepare your environment the night before and anchor your hardest habit to your morning routine."
-        )
+        consistency = user_stats.get('consistency_score', user_stats.get('consistency_30d', 0))
 
-        if not cls.is_available():
-            return {
-                'summary': fallback,
-                'generated_at': now_iso,
-                'source': 'algorithm'
-            }
+        if total_completed_this_week == 0:
+            summary = (
+                "Weekly review: No habits were logged over the last 7 days. "
+                "Focus on scheduling 1 friction-free routine to build momentum for the upcoming week."
+            )
+        elif total_completed_this_week >= 15:
+            summary = (
+                f"Exceptional performance over the last 7 days: {total_completed_this_week} habit completions "
+                f"with peak execution on {best_day}. Your 30-day consistency score is {consistency}%."
+            )
+        elif total_completed_this_week >= 7:
+            summary = (
+                f"Solid execution over the last 7 days: {total_completed_this_week} total completions "
+                f"({total_skipped_this_week} excused skips). {best_day} was your most productive day. "
+                "Carry this momentum forward into next week."
+            )
+        else:
+            summary = (
+                f"Good foundational progress: {total_completed_this_week} completions logged over the last 7 days. "
+                "Prioritize earlier completion windows to reduce end-of-day friction."
+            )
 
-        try:
-            cls._init_genai()
-            user_ctx = cls._build_user_context(user_stats, user_habits)
-            weekly_ctx = cls._build_weekly_context(weekly_data)
-
-            prompt = f"""You are a behavioral psychologist reviewing a client's weekly habit performance.
-User Profile:
-{user_ctx}
-
-Weekly Log Breakdown:
-{weekly_ctx}
-
-Write a structured weekly review (3-4 sentences):
-1. Highlight positive achievements and pattern recognition (e.g. peak days).
-2. Offer one specific behavioral tweak (e.g. temptation bundling, friction reduction).
-3. Conclude with an empowering forward-looking reflection for the week ahead."""
-
-            model = genai.GenerativeModel(cls.DEFAULT_MODEL)
-            response = model.generate_content(prompt)
-            summary = response.text.strip() if response and response.text else fallback
-
-            return {
-                'summary': summary,
-                'generated_at': now_iso,
-                'source': 'gemini'
-            }
-        except Exception as e:
-            print(f"Gemini API Error (weekly): {e}")
-            return {
-                'summary': fallback,
-                'generated_at': now_iso,
-                'source': 'fallback',
-                'error': str(e)
-            }
+        return {
+            'summary': summary,
+            'source': 'behavioral_engine',
+            'generated_at': datetime.now(timezone.utc).isoformat(),
+            'error': None
+        }
 
     @classmethod
     def generate_habit_recommendations(cls, user_goal: str, user_stats: Dict[str, Any],
                                        existing_habits: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
-        Generates 3 actionable micro-habits tailored to the user's stated goal
-        (e.g., 'better focus', 'deep sleep', 'stress reduction', 'fitness').
-        
-        Args:
-            user_goal: User's goal text.
-            user_stats: Current user statistics.
-            existing_habits: Current active habits.
-            
-        Returns:
-            dict: List of recommended habit objects with title, category, icon, frequency, and rationale.
-        """
-        now_iso = datetime.now(timezone.utc).isoformat()
+        Selects up to three goal-matched ideas from the local suggestion library.
 
-        # Goal-based curated fallback library
-        goal_lower = user_goal.lower() if user_goal else "productivity"
-        fallback_library = {
-            'sleep': [
-                {'title': 'Screen Off 30m Before Bed', 'category': 'health', 'icon': '🌙', 'frequency': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'], 'why': 'Reduces blue light exposure to promote natural melatonin production.', 'duration': '30 mins'},
-                {'title': '5-Minute Bedroom Reset', 'category': 'health', 'icon': '🛏️', 'frequency': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'], 'why': 'An uncluttered sleeping space lowers cognitive arousal before sleep.', 'duration': '5 mins'},
-                {'title': 'Nighttime Chamomile Tea', 'category': 'health', 'icon': '🍵', 'frequency': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'], 'why': 'Creates a consistent sensory cue signaling your nervous system to unwind.', 'duration': '10 mins'}
-            ],
-            'focus': [
-                {'title': 'Pomodoro Session (25 min)', 'category': 'productivity', 'icon': '⏱️', 'frequency': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'], 'why': 'Structured intervals minimize cognitive fatigue and prevent context switching.', 'duration': '25 mins'},
-                {'title': 'Morning Top 3 Tasks List', 'category': 'productivity', 'icon': '📝', 'frequency': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'], 'why': 'Identifies highest-leverage priorities before email and messages create reactive bias.', 'duration': '5 mins'},
-                {'title': '5-Minute Mindful Breathing', 'category': 'health', 'icon': '🧘', 'frequency': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'], 'why': 'Activates the parasympathetic nervous system to improve executive attention.', 'duration': '5 mins'}
-            ],
-            'fitness': [
-                {'title': '15-Minute Morning Mobility', 'category': 'fitness', 'icon': '🤸', 'frequency': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'], 'why': 'Increases synovial fluid circulation and primes motor neural pathways.', 'duration': '15 mins'},
-                {'title': 'Hydrate: 500ml Water on Waking', 'category': 'health', 'icon': '💧', 'frequency': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'], 'why': 'Replaces nighttime fluid loss and jumpstarts metabolic cellular function.', 'duration': '1 min'},
-                {'title': '10-Minute Post-Lunch Walk', 'category': 'fitness', 'icon': '🚶', 'frequency': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'], 'why': 'Blunts postprandial glucose spikes and prevents afternoon fatigue slumps.', 'duration': '10 mins'}
+        Args:
+            user_goal: Stated goal or challenge keyword.
+            user_stats: Aggregate user statistics.
+            existing_habits: Existing habits to avoid duplicate titles.
+
+        Returns:
+            dict: List of 3 recommended micro-habits with rationale.
+        """
+        clean_goal = (user_goal or '').lower().strip()
+        existing_titles = [h.get('title', '').lower() for h in existing_habits]
+
+        # Categorize goal to domain
+        target_domain = 'productivity'
+        if any(w in clean_goal for w in ['sleep', 'rest', 'night', 'tired', 'insomnia']):
+            target_domain = 'sleep'
+        elif any(w in clean_goal for w in ['fit', 'gym', 'workout', 'muscle', 'exercise', 'weight', 'health', 'cardio']):
+            target_domain = 'fitness'
+        elif any(w in clean_goal for w in ['mind', 'stress', 'peace', 'anxiety', 'meditat', 'calm', 'zen']):
+            target_domain = 'mindfulness'
+        elif any(w in clean_goal for w in ['learn', 'read', 'book', 'study', 'focus', 'skill', 'code', 'write']):
+            target_domain = 'learning'
+
+        candidates = cls.GOAL_FRAMEWORKS.get(target_domain, cls.GOAL_FRAMEWORKS['productivity'])
+
+        # Filter out existing duplicates or provide contextual alternatives
+        recommendations = []
+        for cand in candidates:
+            if cand['title'].lower() not in existing_titles:
+                recommendations.append(cand)
+
+        # Fill from other domains when the user's existing habits overlap the
+        # best matching domain. Return fewer only when every built-in option
+        # is already represented.
+        if len(recommendations) < 3:
+            alt_pool = [
+                item
+                for framework in cls.GOAL_FRAMEWORKS.values()
+                for item in framework
             ]
+            for alt in alt_pool:
+                if alt['title'].lower() not in existing_titles and alt not in recommendations:
+                    recommendations.append(alt)
+                if len(recommendations) == 3:
+                    break
+
+        return {
+            'recommendations': recommendations[:3],
+            'source': 'behavioral_engine',
+            'generated_at': datetime.now(timezone.utc).isoformat(),
+            'error': None
         }
 
-        # Select closest matching fallback
-        matched_key = 'productivity'
-        for key in fallback_library:
-            if key in goal_lower:
-                matched_key = key
-                break
-        fallback_recommendations = fallback_library.get(matched_key, fallback_library['focus'])
-
-        if not cls.is_available():
-            return {
-                'recommendations': fallback_recommendations,
-                'goal': user_goal,
-                'generated_at': now_iso,
-                'source': 'library'
-            }
-
-        try:
-            cls._init_genai()
-            context = cls._build_user_context(user_stats, existing_habits)
-            prompt = f"""You are an elite habit formation specialist.
-User Goal: {user_goal}
-User Profile:
-{context}
-
-Recommend EXACTLY 3 micro-habits specifically tailored to this goal.
-Rules:
-- Each habit must take less than 15 minutes.
-- Provide output strictly as a JSON array of 3 objects with keys:
-  "title" (string), "category" ("health", "fitness", "learning", "productivity", "general"),
-  "icon" (single emoji), "frequency" (list of weekday names in lowercase),
-  "why" (1 concise sentence explaining the psychological benefit),
-  "duration" (string, e.g. "5 mins").
-
-Return ONLY valid raw JSON with no markdown wrapping or additional text."""
-
-            model = genai.GenerativeModel(cls.DEFAULT_MODEL)
-            response = model.generate_content(prompt)
-            raw_text = response.text.strip() if response and response.text else ""
-
-            # Extract JSON block
-            if "```json" in raw_text:
-                raw_text = raw_text.split("```json")[1].split("```")[0]
-            elif "```" in raw_text:
-                raw_text = raw_text.split("```")[1].split("```")[0]
-
-            recommendations = json.loads(raw_text.strip())
-            if not isinstance(recommendations, list) or len(recommendations) == 0:
-                recommendations = fallback_recommendations
-
-            return {
-                'recommendations': recommendations,
-                'goal': user_goal,
-                'generated_at': now_iso,
-                'source': 'gemini'
-            }
-        except Exception as e:
-            print(f"Gemini API Error (recommendations): {e}")
-            return {
-                'recommendations': fallback_recommendations,
-                'goal': user_goal,
-                'generated_at': now_iso,
-                'source': 'fallback',
-                'error': str(e)
-            }
-
     @classmethod
-    def analyze_mood_habit_correlation(cls, user_moods: List[Dict[str, Any]], completion_rate: int) -> Dict[str, Any]:
+    def analyze_mood_habit_correlation(cls, daily_records: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
-        Translates raw mood tracking data and completion statistics into an emotionally
-        intelligent, supportive behavioral insight.
-        
+        Compares completion rates on mood-logged days using matched daily data.
+
         Args:
-            user_moods: List of recent mood check-in dictionaries.
-            completion_rate: Overall habit completion percentage.
-            
+            daily_records: Entries with mood, completed scheduled habits, and
+                scheduled habit opportunities for the same date.
+
         Returns:
-            dict: Insight text, happy percentage, and source.
+            dict: Formatted insight text with metadata.
         """
-        now_iso = datetime.now(timezone.utc).isoformat()
-
-        happy_count = sum(1 for m in user_moods if m.get('mood') == 'happy')
-        total_moods = len(user_moods)
-        happy_pct = int((happy_count / total_moods) * 100) if total_moods > 0 else 50
-
-        fallback = (
-            f"You have felt positive on {happy_pct}% of tracked days. "
-            "Data demonstrates that regular habits stabilize mood, while small positive rituals build emotional resilience."
-        )
-
-        if not cls.is_available():
+        if not daily_records or len(daily_records) < 3:
             return {
-                'insight': fallback,
-                'happy_percent': happy_pct,
-                'generated_at': now_iso,
-                'source': 'algorithm'
+                'insight': (
+                    "Log your mood alongside scheduled habits on at least 3 days "
+                    "to compare your daily patterns."
+                ),
+                'happy_percent': None,
+                'source': 'behavioral_engine',
+                'generated_at': datetime.now(timezone.utc).isoformat(),
+                'error': None
             }
 
-        try:
-            cls._init_genai()
-            prompt = f"""You are an emotional wellbeing coach.
-The user tracked {total_moods} mood days: {happy_count} happy ({happy_pct}%).
-Their current habit completion rate is {completion_rate}%.
+        happy_days = [row for row in daily_records if row.get('mood') == 'happy']
+        other_days = [row for row in daily_records if row.get('mood') in ('neutral', 'sad')]
+        happy_percent = round((len(happy_days) / len(daily_records)) * 100)
 
-Write an insightful, validating 2-sentence observation connecting their emotional states
-with daily habit practice. Conclude with a compassionate takeaway."""
+        happy_total = sum(max(0, row.get('scheduled', 0)) for row in happy_days)
+        happy_completed = sum(max(0, row.get('completed', 0)) for row in happy_days)
+        other_total = sum(max(0, row.get('scheduled', 0)) for row in other_days)
+        other_completed = sum(max(0, row.get('completed', 0)) for row in other_days)
 
-            model = genai.GenerativeModel(cls.DEFAULT_MODEL)
-            response = model.generate_content(prompt)
-            insight = response.text.strip() if response and response.text else fallback
+        if not happy_total:
+            insight = "No scheduled habits fell on your logged happy days, so there is not enough matching data to compare yet."
+            happy_rate = None
+            other_rate = int((other_completed / other_total) * 100) if other_total else None
+        else:
+            happy_rate = int((happy_completed / happy_total) * 100)
+            other_rate = int((other_completed / other_total) * 100) if other_total else None
+            if other_rate is None:
+                insight = f"You completed {happy_rate}% of scheduled habits on your logged happy days. Log other moods to compare patterns."
+            else:
+                insight = (
+                    f"You completed {happy_rate}% of scheduled habits on logged happy days and "
+                    f"{other_rate}% on neutral or sad days. This is a pattern in your logs, not evidence that mood causes completion."
+                )
 
-            return {
-                'insight': insight,
-                'happy_percent': happy_pct,
-                'generated_at': now_iso,
-                'source': 'gemini'
-            }
-        except Exception as e:
-            print(f"Gemini API Error (mood): {e}")
-            return {
-                'insight': fallback,
-                'happy_percent': happy_pct,
-                'generated_at': now_iso,
-                'source': 'fallback',
-                'error': str(e)
-            }
-
-    @staticmethod
-    def _build_user_context(stats: Dict[str, Any], habits: List[Dict[str, Any]]) -> str:
-        """Formats statistics and habits into structured prompt context."""
-        lines = [
-            f"- Active Habits Count: {stats.get('total_habits', 0)}",
-            f"- Combined Streaks: {stats.get('combined_streak', 0)} days",
-            f"- Lifetime Completions: {stats.get('total_completions', 0)}",
-            f"- 30-Day Consistency Score: {stats.get('consistency_score', 0)}%",
-            f"- User Level: {stats.get('level', 1)}"
-        ]
-        if habits:
-            titles = [h.get('title', 'Habit') for h in habits[:5]]
-            lines.append(f"- Sample Habits: {', '.join(titles)}")
-        return "\n".join(lines)
-
-    @staticmethod
-    def _build_weekly_context(weekly_data: List[Dict[str, Any]]) -> str:
-        """Formats weekly breakdown into structured prompt context."""
-        lines = []
-        for day_item in weekly_data:
-            day_name = day_item.get('day', 'Day')
-            completed = day_item.get('completed', 0)
-            rate = day_item.get('rate', 0)
-            lines.append(f"- {day_name}: {completed} completed ({rate}% rate)")
-        return "\n".join(lines)
+        return {
+            'insight': insight,
+            'happy_percent': happy_percent,
+            'happy_rate': happy_rate,
+            'other_rate': other_rate,
+            'source': 'behavioral_engine',
+            'generated_at': datetime.now(timezone.utc).isoformat(),
+            'error': None
+        }

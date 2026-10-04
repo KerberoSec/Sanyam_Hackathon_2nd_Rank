@@ -11,6 +11,7 @@ let activeHabitFilter = 'all';
 let habitSearchQuery = '';
 let completionChartInstance = null;
 let moodChartInstance = null;
+const pendingHabitActions = new Set();
 
 /**
  * Sanitizes unsafe input strings to prevent Cross-Site Scripting (XSS).
@@ -156,20 +157,156 @@ function updateNavbarState() {
         const nameEl = document.getElementById('navUserName');
         if (nameEl && user.name) nameEl.textContent = user.name;
 
+        const currentLvl = (user.level !== undefined && user.level !== null) ? user.level : 1;
+        const currentXP = (user.xp_points !== undefined && user.xp_points !== null) ? user.xp_points : 0;
+
         const levelEl = document.getElementById('navUserLevel');
-        if (levelEl && user.level) levelEl.textContent = user.level;
+        if (levelEl) levelEl.textContent = currentLvl;
 
         const xpEl = document.getElementById('navUserXP');
-        if (xpEl && user.xp_points !== undefined) xpEl.textContent = user.xp_points;
+        if (xpEl) xpEl.textContent = currentXP;
+
+        const dashLvlEl = document.getElementById('dashUserLevel');
+        if (dashLvlEl) dashLvlEl.textContent = currentLvl;
+
+        const dashXpEl = document.getElementById('dashUserXP');
+        if (dashXpEl) dashXpEl.textContent = currentXP;
     } else {
         authOnlyElements.forEach(el => el.style.display = 'none');
         guestOnlyElements.forEach(el => el.style.display = '');
     }
 }
 
+/**
+ * Loads current user profile and displays profile edit modal.
+ */
+async function openProfileModal() {
+    const cachedUser = getUser();
+    const emailEl = document.getElementById('profileEmail');
+    const nameEl = document.getElementById('profileName');
+    const oldPassEl = document.getElementById('profileOldPassword');
+    const newPassEl = document.getElementById('profileNewPassword');
+    if (emailEl) emailEl.value = cachedUser.email || '';
+    if (nameEl) nameEl.value = cachedUser.name || '';
+    if (oldPassEl) oldPassEl.value = '';
+    if (newPassEl) newPassEl.value = '';
+
+    const modalEl = document.getElementById('profileModal');
+    if (modalEl && typeof bootstrap !== 'undefined') {
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+    }
+
+    try {
+        const res = await apiCall('/api/auth/profile');
+        if (res && res.user) {
+            const user = res.user;
+            if (emailEl) emailEl.value = user.email || '';
+            if (nameEl) nameEl.value = user.name || '';
+            localStorage.setItem('user', JSON.stringify(user));
+        }
+    } catch (e) {
+        console.warn('Could not refresh profile from server:', e);
+    }
+}
+
+/**
+ * Submits updated user profile changes.
+ */
+async function saveUserProfile(event) {
+    if (event) event.preventDefault();
+    const nameInput = document.getElementById('profileName');
+    const oldPassInput = document.getElementById('profileOldPassword');
+    const newPassInput = document.getElementById('profileNewPassword');
+
+    const name = nameInput ? nameInput.value.trim() : '';
+    const oldPassword = oldPassInput ? oldPassInput.value : '';
+    const newPassword = newPassInput ? newPassInput.value : '';
+
+    if (!name) {
+        showToast('Name cannot be empty.', 'warning');
+        return;
+    }
+
+    const payload = { name };
+    if (newPassword) {
+        if (!oldPassword) {
+            showToast('Current password is required to set a new password.', 'warning');
+            return;
+        }
+        if (newPassword.length < 8) {
+            showToast('New password must be at least 8 characters.', 'warning');
+            return;
+        }
+        payload.old_password = oldPassword;
+        payload.new_password = newPassword;
+    }
+
+    const saveBtn = document.getElementById('profileSaveBtn');
+    let originalBtnHtml = '';
+    if (saveBtn) {
+        originalBtnHtml = saveBtn.innerHTML;
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Saving...';
+    }
+
+    try {
+        const res = await apiCall('/api/auth/profile', 'PUT', payload);
+
+        if (res && res.user) {
+            showToast('Profile updated successfully!', 'success');
+            localStorage.setItem('user', JSON.stringify(res.user));
+            if (res.token) {
+                localStorage.setItem('token', res.token);
+            }
+            updateNavbarState();
+            const userNameHeader = document.getElementById('userName');
+            if (userNameHeader) userNameHeader.textContent = res.user.name;
+
+            const modalEl = document.getElementById('profileModal');
+            if (modalEl && typeof bootstrap !== 'undefined') {
+                const modal = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
+                modal.hide();
+            }
+        }
+    } catch (err) {
+        console.error('Error saving profile:', err);
+        showToast('Failed to update profile. Please try again.', 'danger');
+    } finally {
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalBtnHtml || '<i class="fas fa-save me-1"></i> Save Changes';
+        }
+    }
+}
+
+window.openProfileModal = openProfileModal;
+window.saveUserProfile = saveUserProfile;
+
 // ============================================================================
 // 2. Dark Mode & UI Feedback
 // ============================================================================
+
+/**
+ * Updates UI labels and icons based on dark mode state.
+ */
+function updateThemeUI() {
+    const isDark = document.body.classList.contains('dark-mode');
+
+    const dropdownIcon = document.getElementById('themeDropdownIcon');
+    const dropdownText = document.getElementById('themeDropdownText');
+    if (dropdownIcon) {
+        dropdownIcon.className = isDark ? 'fas fa-sun text-warning me-2' : 'fas fa-moon text-warning me-2';
+    }
+    if (dropdownText) {
+        dropdownText.textContent = isDark ? 'Light Mode' : 'Dark Mode';
+    }
+
+    const toggleIcons = document.querySelectorAll('.theme-toggle-icon');
+    toggleIcons.forEach(icon => {
+        icon.className = isDark ? 'fas fa-sun text-warning theme-toggle-icon' : 'fas fa-moon theme-toggle-icon';
+    });
+}
 
 /**
  * Loads and applies dark mode preference from local storage.
@@ -181,6 +318,7 @@ function loadDarkMode() {
     } else {
         document.body.classList.remove('dark-mode');
     }
+    updateThemeUI();
 }
 
 /**
@@ -190,6 +328,36 @@ function toggleDarkMode() {
     document.body.classList.toggle('dark-mode');
     const isDark = document.body.classList.contains('dark-mode');
     localStorage.setItem('darkMode', isDark);
+    updateThemeUI();
+    updateChartTheme();
+}
+
+function updateChartTheme() {
+    const textColor = document.body.classList.contains('dark-mode') ? '#cbd5e1' : '#475569';
+    const gridColor = document.body.classList.contains('dark-mode')
+        ? 'rgba(148, 163, 184, 0.16)'
+        : 'rgba(71, 85, 105, 0.14)';
+    [completionChartInstance, moodChartInstance, window.habitCompletionChartInstance, window.habitTrendChartInstance].forEach((chart) => {
+        if (!chart) return;
+        const legend = chart.options.plugins?.legend;
+        if (legend) {
+            legend.labels = { ...legend.labels, color: textColor };
+        }
+        Object.values(chart.options.scales || {}).forEach((scale) => {
+            if (scale.ticks) scale.ticks.color = textColor;
+            if (scale.grid) scale.grid.color = gridColor;
+        });
+        chart.update('none');
+    });
+}
+
+function setHabitActionPending(habitId, pending) {
+    const normalizedId = Number(habitId);
+    if (!Number.isInteger(normalizedId)) return;
+    if (pending) pendingHabitActions.add(normalizedId);
+    else pendingHabitActions.delete(normalizedId);
+    document.querySelectorAll(`.js-habit-action[data-habit-action-id="${normalizedId}"]`)
+        .forEach(button => { button.disabled = pending; });
 }
 
 /**
@@ -248,20 +416,36 @@ async function initDashboard() {
     const todayEl = document.getElementById('todayDateDisplay');
     if (todayEl) {
         const now = new Date();
-        const options = { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' };
+        const options = { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' };
         todayEl.textContent = now.toLocaleDateString('en-US', options);
     }
 
-    // Load data in parallel
+    // Hook recommendation modal to populate proposals automatically if empty
+    const recModalEl = document.getElementById('aiRecommendationsModal');
+    if (recModalEl) {
+        recModalEl.addEventListener('show.bs.modal', () => {
+            const container = document.getElementById('aiRecommendationsResult');
+            const goalInput = document.getElementById('aiGoalInput');
+            if (container && (!container._recommendations || container._recommendations.length === 0)) {
+                if (goalInput && !goalInput.value) {
+                    goalInput.value = 'productivity and wellness';
+                }
+                generateAIHabits();
+            }
+        });
+    }
+
+    // Share the analytics payload between summary cards and the chart loader.
+    const analyticsPromise = apiCall('/api/analytics');
     await Promise.all([
-        loadUserStats(),
+        loadUserStats(analyticsPromise),
         loadHabits(),
         loadMood(),
         loadAICoachMessage(),
         loadWeeklySummary(),
         loadMoodInsights(),
         loadBadges(),
-        loadAnalytics()
+        loadAnalytics(analyticsPromise)
     ]);
 }
 
@@ -272,8 +456,8 @@ async function initDashboard() {
 /**
  * Fetches and populates top summary statistics cards.
  */
-async function loadUserStats() {
-    const res = await apiCall('/api/analytics');
+async function loadUserStats(analyticsPromise = null) {
+    const res = await (analyticsPromise || apiCall('/api/analytics'));
     if (!res) return;
 
     const summary = res.summary || {};
@@ -298,6 +482,67 @@ async function loadUserStats() {
 }
 
 /**
+ * Maps habit category and icon to a professional Font Awesome vector icon.
+ */
+function getHabitVectorIconHtml(habit) {
+    const cat = (habit.category || '').toLowerCase();
+    const icon = (habit.icon || '').toLowerCase();
+    if (cat.includes('fit') || icon.includes('fit') || icon.includes('run') || icon.includes('gym') || icon.includes('mobility') || icon.includes('walk') || cat.includes('health')) {
+        return '<i class="fas fa-dumbbell text-primary"></i>';
+    }
+    if (cat.includes('mind') || cat.includes('meditat') || icon.includes('mind') || icon.includes('zen') || icon.includes('peace') || icon.includes('wellness')) {
+        return '<i class="fas fa-spa" style="color: #0d9488;"></i>';
+    }
+    if (cat.includes('productiv') || cat.includes('work') || icon.includes('work') || icon.includes('task') || icon.includes('timer') || icon.includes('plan')) {
+        return '<i class="fas fa-briefcase text-primary"></i>';
+    }
+    if (cat.includes('learn') || cat.includes('read') || cat.includes('study') || icon.includes('book')) {
+        return '<i class="fas fa-book-open text-primary"></i>';
+    }
+    if (cat.includes('sleep') || cat.includes('rest') || icon.includes('sleep') || icon.includes('moon')) {
+        return '<i class="fas fa-moon text-warning"></i>';
+    }
+    if (cat.includes('water') || cat.includes('hydrat') || icon.includes('water') || icon.includes('drop')) {
+        return '<i class="fas fa-tint text-info"></i>';
+    }
+    if (cat.includes('finance') || cat.includes('money') || icon.includes('wallet')) {
+        return '<i class="fas fa-wallet text-success"></i>';
+    }
+    return '<i class="fas fa-check-circle text-primary"></i>';
+}
+
+/**
+ * Maps badge icon names to clean vector icons.
+ */
+function getBadgeIconHtml(iconName) {
+    const icon = (iconName || '').toLowerCase();
+    if (icon.includes('streak') || icon.includes('fire')) return '<i class="fas fa-fire text-warning"></i>';
+    if (icon.includes('strength')) return '<i class="fas fa-dumbbell text-primary"></i>';
+    if (icon.includes('master') || icon.includes('crown')) return '<i class="fas fa-crown text-warning"></i>';
+    if (icon.includes('starter') || icon.includes('launch') || icon.includes('rocket')) return '<i class="fas fa-rocket text-info"></i>';
+    if (icon.includes('builder')) return '<i class="fas fa-hammer text-secondary"></i>';
+    if (icon.includes('century') || icon.includes('centennial')) return '<i class="fas fa-medal text-warning"></i>';
+    if (icon.includes('consistency')) return '<i class="fas fa-check-double text-success"></i>';
+    if (icon.includes('champion') || icon.includes('trophy')) return '<i class="fas fa-trophy text-warning"></i>';
+    if (icon.includes('target')) return '<i class="fas fa-bullseye text-danger"></i>';
+    return '<i class="fas fa-award text-primary"></i>';
+}
+
+/**
+ * Maps insight icon names to clean vector icons.
+ */
+function getInsightIconHtml(iconName) {
+    const icon = (iconName || '').toLowerCase();
+    if (icon.includes('growth') || icon.includes('seed')) return '<i class="fas fa-seedling text-success"></i>';
+    if (icon.includes('insight') || icon.includes('light') || icon.includes('tip')) return '<i class="fas fa-lightbulb text-warning"></i>';
+    if (icon.includes('shield')) return '<i class="fas fa-shield-alt text-primary"></i>';
+    if (icon.includes('alert') || icon.includes('warn')) return '<i class="fas fa-exclamation-triangle text-danger"></i>';
+    if (icon.includes('star')) return '<i class="fas fa-star text-warning"></i>';
+    if (icon.includes('trophy') || icon.includes('award')) return '<i class="fas fa-trophy text-warning"></i>';
+    return '<i class="fas fa-info-circle text-info"></i>';
+}
+
+/**
  * Loads all achievement badges from backend and renders unlocked state.
  */
 async function loadBadges() {
@@ -319,9 +564,9 @@ async function loadBadges() {
 
     container.innerHTML = badges.map(b => `
         <div class="badge-item ${b.unlocked ? 'unlocked' : 'locked'}" title="${escapeHtml(b.name)}: ${escapeHtml(b.description)}${b.earned_at ? ' (Unlocked ' + escapeHtml(b.earned_at.split('T')[0]) + ')' : ' (Locked)'}">
-            <div class="badge-icon display-6">${escapeHtml(b.icon)}</div>
+            <div class="badge-icon display-6">${getBadgeIconHtml(b.icon)}</div>
             <div class="badge-name mt-1">${escapeHtml(b.name)}</div>
-            <small class="badge-desc text-muted">${b.unlocked ? '✓ Unlocked' : '🔒 Locked'}</small>
+            <small class="badge-desc text-muted">${b.unlocked ? 'Unlocked' : 'Locked'}</small>
         </div>
     `).join('');
 }
@@ -363,18 +608,46 @@ function renderHabitsList() {
 
     if (habitSearchQuery) {
         const query = habitSearchQuery.toLowerCase();
-        filtered = filtered.filter(h => 
+        filtered = filtered.filter(h =>
             (h.title && h.title.toLowerCase().includes(query)) ||
             (h.category && h.category.toLowerCase().includes(query))
         );
     }
 
     if (filtered.length === 0) {
+        let emptyTitle = 'No habits found';
+        let emptySubtitle = 'Click "New Habit" or use "Habit Recommendations" to get started!';
+        if (habitSearchQuery) {
+            emptyTitle = 'No matching habits';
+            emptySubtitle = `No habits found matching "${escapeHtml(habitSearchQuery)}". Try clearing your search term.`;
+        } else if (activeHabitFilter === 'pending') {
+            emptyTitle = 'All caught up!';
+            emptySubtitle = 'No pending habits remaining for today. Great work!';
+        } else if (activeHabitFilter === 'completed') {
+            emptyTitle = 'No completed habits yet';
+            emptySubtitle = 'Complete habits from your pending list to build your daily streak.';
+        }
+
         listEl.innerHTML = `
             <div class="text-center py-5 text-muted">
                 <i class="fas fa-clipboard-list fa-3x mb-3 text-secondary opacity-50"></i>
-                <p class="mb-2 fw-semibold">No habits found.</p>
-                <small>${habitSearchQuery ? 'Try clearing your search term.' : 'Click "New Habit" or use "AI Recommendations" to add one!'}</small>
+                <p class="mb-2 fw-semibold fs-5">${emptyTitle}</p>
+                <small class="d-block mb-3">${emptySubtitle}</small>
+                ${!habitSearchQuery && activeHabitFilter === 'all' ? `
+                    <div class="d-flex justify-content-center gap-2 mt-2">
+                        <button type="button" class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#newHabitModal">
+                            <i class="fas fa-plus me-1"></i> Add New Habit
+                        </button>
+                        <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#aiRecommendationsModal">
+                            <i class="fas fa-magic me-1"></i> Habit Recommendations
+                        </button>
+                    </div>
+                ` : ''}
+                ${(habitSearchQuery || activeHabitFilter !== 'all') ? `
+                    <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3 mt-1 fw-semibold" onclick="clearHabitSearchAndFilters()">
+                        Clear Filters & Search
+                    </button>
+                ` : ''}
             </div>
         `;
         return;
@@ -392,17 +665,17 @@ function renderHabitsList() {
 
         return `
             <div class="habit-item ${statusClass} shadow-sm" id="habit-${habit.id}">
-                <div class="habit-icon p-2 rounded-3 bg-light text-center fs-3">${escapeHtml(habit.icon || '✨')}</div>
+                <div class="habit-icon p-2 rounded-3 bg-light text-center fs-3">${getHabitVectorIconHtml(habit)}</div>
                 <div class="habit-content">
                     <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
-                        <a href="/habit/${habit.id}" class="habit-title text-decoration-none text-dark fw-bold">${escapeHtml(habit.title)}</a>
+                        <a href="/habit/${habit.id}" class="habit-title text-decoration-none fw-bold">${escapeHtml(habit.title)}</a>
                         <span class="badge bg-light text-secondary border rounded-pill small">${escapeHtml(habit.category)}</span>
                         ${!habit.is_scheduled_today ? '<span class="badge bg-secondary-subtle text-muted rounded-pill small">Not Scheduled Today</span>' : ''}
                     </div>
                     <div class="d-flex align-items-center gap-3 text-muted small flex-wrap">
                         <span>
-                            ${habit.current_streak > 0 
-                                ? `<span class="text-warning fw-semibold"><i class="fas fa-fire me-1"></i>${habit.current_streak}d streak</span>` 
+                            ${habit.current_streak > 0
+                                ? `<span class="text-warning fw-semibold"><i class="fas fa-fire me-1"></i>${habit.current_streak}d streak</span>`
                                 : '<span class="text-muted"><i class="fas fa-seedling me-1"></i>Streak ready</span>'}
                         </span>
                         <span>•</span>
@@ -412,8 +685,8 @@ function renderHabitsList() {
                     </div>
                 </div>
                 <div class="habit-actions d-flex align-items-center gap-2">
-                    ${!isCompleted ? `
-                        <button class="btn btn-sm btn-success rounded-pill px-3 shadow-sm" onclick="completeHabit(${habit.id})" title="Mark Done">
+                    ${!habit.is_scheduled_today ? '' : !isCompleted ? `
+                        <button class="js-habit-action btn btn-sm btn-success rounded-pill px-3 shadow-sm" data-habit-action-id="${habit.id}" ${pendingHabitActions.has(Number(habit.id)) ? 'disabled' : ''} onclick="completeHabit(${habit.id})" aria-label="Mark ${escapeHtml(habit.title)} complete">
                             <i class="fas fa-check me-1"></i> Done
                         </button>
                     ` : `
@@ -421,20 +694,20 @@ function renderHabitsList() {
                             <i class="fas fa-check-circle me-1"></i> Completed
                         </span>
                     `}
-                    ${!isSkipped && !isCompleted ? `
-                        <button class="btn btn-sm btn-outline-secondary rounded-pill px-2" onclick="skipHabit(${habit.id})" title="Excuse Habit">
+                    ${habit.is_scheduled_today && !isSkipped && !isCompleted ? `
+                        <button class="js-habit-action btn btn-sm btn-outline-secondary rounded-pill px-2" data-habit-action-id="${habit.id}" ${pendingHabitActions.has(Number(habit.id)) ? 'disabled' : ''} onclick="skipHabit(${habit.id})" aria-label="Skip ${escapeHtml(habit.title)}">
                             Skip
                         </button>
                     ` : ''}
-                    ${!isMissed && !isCompleted ? `
-                        <button class="btn btn-sm btn-outline-danger rounded-pill px-2" onclick="missHabit(${habit.id})" title="Mark Missed">
+                    ${habit.is_scheduled_today && !isMissed && !isSkipped && !isCompleted ? `
+                        <button class="js-habit-action btn btn-sm btn-outline-danger rounded-pill px-2" data-habit-action-id="${habit.id}" ${pendingHabitActions.has(Number(habit.id)) ? 'disabled' : ''} onclick="missHabit(${habit.id})" aria-label="Mark ${escapeHtml(habit.title)} missed">
                             Miss
                         </button>
                     ` : ''}
-                    <a href="/habit/${habit.id}" class="btn btn-sm btn-outline-primary rounded-circle p-2" title="Analytics & History">
+                    <a href="/habit/${habit.id}" class="btn btn-sm btn-outline-primary rounded-circle p-2" aria-label="View analytics and history for ${escapeHtml(habit.title)}">
                         <i class="fas fa-chart-bar"></i>
                     </a>
-                    <button class="btn btn-sm btn-outline-danger rounded-circle p-2" onclick="deleteHabit(${habit.id})" title="Delete Habit">
+                    <button class="btn btn-sm btn-outline-danger rounded-circle p-2" onclick="deleteHabit(${habit.id})" aria-label="Delete ${escapeHtml(habit.title)}">
                         <i class="fas fa-trash-alt"></i>
                     </button>
                 </div>
@@ -454,65 +727,114 @@ function handleHabitSearch(query) {
 /**
  * Filters habits list tabs.
  */
-function filterHabits(filterType, btnEl) {
+function filterHabits(filterType) {
     activeHabitFilter = filterType;
-    document.querySelectorAll('#habitFilterGroup button').forEach(b => b.classList.remove('active'));
-    if (btnEl) btnEl.classList.add('active');
+    document.querySelectorAll('#habitFilterGroup button').forEach(button => {
+        const selected = button.dataset.filter === filterType;
+        button.classList.toggle('active', selected);
+        button.setAttribute('aria-pressed', String(selected));
+    });
+    renderHabitsList();
+}
+
+window.handleHabitSearch = handleHabitSearch;
+window.filterHabits = filterHabits;
+
+/**
+ * Clears habit search input and re-renders full list.
+ */
+function clearHabitSearch() {
+    const searchInput = document.getElementById('habitSearchInput');
+    if (searchInput) searchInput.value = '';
+    habitSearchQuery = '';
     renderHabitsList();
 }
 
 /**
- * Marks habit completed today.
+ * Resets search input and resets active filter to 'all'.
+ */
+function clearHabitSearchAndFilters() {
+    const searchInput = document.getElementById('habitSearchInput');
+    if (searchInput) searchInput.value = '';
+    habitSearchQuery = '';
+    filterHabits('all');
+}
+
+window.clearHabitSearch = clearHabitSearch;
+window.clearHabitSearchAndFilters = clearHabitSearchAndFilters;
+
+/**
+ * Returns the app's UTC calendar date in YYYY-MM-DD format.
+ */
+function getCurrentAppDateString() {
+    return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * Marks habit completed today using the app's UTC calendar date.
  */
 async function completeHabit(habitId) {
-    const res = await apiCall(`/api/habits/${habitId}/complete`, 'POST');
-    if (!res) return;
+    if (pendingHabitActions.has(Number(habitId))) return;
+    setHabitActionPending(habitId, true);
+    try {
+        const dateStr = getCurrentAppDateString();
+        const res = await apiCall(`/api/habits/${habitId}/complete`, 'POST', { date: dateStr });
+        if (!res) return;
 
-    confetti({
-        particleCount: 80,
-        spread: 60,
-        origin: { y: 0.7 }
-    });
+        confetti({ particleCount: 80, spread: 60, origin: { y: 0.7 } });
 
-    showToast(`+${res.xp_earned} XP earned! 🎉`, 'success');
+        showToast(`+${res.xp_earned} XP earned!`, 'success');
 
-    if (res.streak_message) {
-        showToast(res.streak_message, 'info');
+        if (res.streak_message) showToast(res.streak_message, 'info');
+
+        if (res.badges_unlocked && res.badges_unlocked.length > 0) {
+            res.badges_unlocked.forEach(b => {
+                showToast(`Achievement Unlocked: ${b.name}`, 'success', 5000);
+            });
+            await loadBadges();
+        }
+
+        await loadHabits();
+        await loadUserStats();
+    } finally {
+        setHabitActionPending(habitId, false);
     }
-
-    if (res.badges_unlocked && res.badges_unlocked.length > 0) {
-        res.badges_unlocked.forEach(b => {
-            showToast(`Achievement Unlocked: ${b.icon} ${b.name}!`, 'success', 5000);
-        });
-        await loadBadges();
-    }
-
-    await loadHabits();
-    await loadUserStats();
 }
 
 /**
  * Excuses habit for today.
  */
 async function skipHabit(habitId) {
-    const res = await apiCall(`/api/habits/${habitId}/skip`, 'POST');
-    if (!res) return;
-
-    showToast('Habit excused for today. Streak preserved!', 'info');
-    await loadHabits();
-    await loadUserStats();
+    if (pendingHabitActions.has(Number(habitId))) return;
+    setHabitActionPending(habitId, true);
+    try {
+        const dateStr = getCurrentAppDateString();
+        const res = await apiCall(`/api/habits/${habitId}/skip`, 'POST', { date: dateStr });
+        if (!res) return;
+        showToast(`Habit excused for today. +${res.xp_earned || 0} XP earned.`, 'info');
+        await loadHabits();
+        await loadUserStats();
+    } finally {
+        setHabitActionPending(habitId, false);
+    }
 }
 
 /**
  * Marks habit missed today.
  */
 async function missHabit(habitId) {
-    const res = await apiCall(`/api/habits/${habitId}/miss`, 'POST');
-    if (!res) return;
-
-    showToast('Marked as missed. Rebuild momentum tomorrow!', 'warning');
-    await loadHabits();
-    await loadUserStats();
+    if (pendingHabitActions.has(Number(habitId))) return;
+    setHabitActionPending(habitId, true);
+    try {
+        const dateStr = getCurrentAppDateString();
+        const res = await apiCall(`/api/habits/${habitId}/miss`, 'POST', { date: dateStr });
+        if (!res) return;
+        showToast('Marked as missed. Rebuild momentum tomorrow!', 'warning');
+        await loadHabits();
+        await loadUserStats();
+    } finally {
+        setHabitActionPending(habitId, false);
+    }
 }
 
 /**
@@ -532,21 +854,31 @@ async function deleteHabit(habitId) {
  * Submits new habit creation modal form.
  */
 async function createHabit() {
-    const title = document.getElementById('habitTitle').value.trim();
-    const category = document.getElementById('habitCategory').value;
-    const icon = document.getElementById('habitIcon').value.trim() || '✨';
-    const reminderTime = document.getElementById('habitReminderTime').value || null;
+    const titleEl = document.getElementById('habitTitle');
+    const title = titleEl ? titleEl.value.trim() : '';
+    const category = document.getElementById('habitCategory') ? document.getElementById('habitCategory').value : 'productivity';
+    const icon = document.getElementById('habitIcon') ? document.getElementById('habitIcon').value.trim() || 'habit' : 'habit';
+    const reminderTime = document.getElementById('habitReminderTime') ? document.getElementById('habitReminderTime').value || null : null;
 
     const checkedBoxes = document.querySelectorAll('#frequencyOptions input:checked');
     const frequency = Array.from(checkedBoxes).map(cb => cb.value);
 
     if (!title) {
         showToast('Please specify a habit title', 'warning');
+        if (titleEl) titleEl.focus();
         return;
     }
     if (frequency.length === 0) {
         showToast('Please select at least one scheduled day', 'warning');
         return;
+    }
+
+    const submitBtn = document.getElementById('createHabitSubmitBtn');
+    let originalBtnHtml = '';
+    if (submitBtn) {
+        originalBtnHtml = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Creating...';
     }
 
     const payload = {
@@ -557,39 +889,92 @@ async function createHabit() {
         reminder_time: reminderTime
     };
 
-    const res = await apiCall('/api/habits', 'POST', payload);
-    if (res) {
-        showToast('Habit created successfully! 🔥', 'success');
-        document.getElementById('newHabitForm').reset();
+    try {
+        const res = await apiCall('/api/habits', 'POST', payload);
+        if (res && (res.habit || res.id)) {
+            showToast('Habit created successfully!', 'success');
+            const form = document.getElementById('newHabitForm');
+            if (form) form.reset();
 
-        const modalEl = document.getElementById('newHabitModal');
-        const modalInstance = bootstrap.Modal.getInstance(modalEl);
-        if (modalInstance) modalInstance.hide();
+            const modalEl = document.getElementById('newHabitModal');
+            if (modalEl && typeof bootstrap !== 'undefined') {
+                const modalInstance = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
+                modalInstance.hide();
+            }
 
-        await loadHabits();
-        await loadUserStats();
+            await loadHabits();
+            await loadUserStats();
+        } else if (res && res.error) {
+            showToast(res.error, 'danger');
+        }
+    } catch (err) {
+        console.error('Error creating habit:', err);
+        showToast('Failed to create habit. Please try again.', 'danger');
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnHtml || '<i class="fas fa-plus me-1"></i> Create Habit';
+        }
     }
 }
 
 // ============================================================================
 // 6. Mood Tracking
 // ============================================================================
+// 6. Mood Tracking
+// ============================================================================
+
+let currentSelectedMood = 'neutral';
+let todayMoodRecorded = false;
+
+function updateMoodCharCount() {
+    const input = document.getElementById('moodNoteInput');
+    const counter = document.getElementById('moodCharCount');
+    if (input && counter) {
+        counter.textContent = `${input.value.length}/1000`;
+    }
+}
+
+function selectMoodOption(mood) {
+    document.querySelectorAll('.mood-option').forEach((element) => {
+        const selected = element.dataset.mood === mood;
+        element.classList.toggle('selected', selected);
+        element.setAttribute('aria-pressed', String(selected));
+    });
+}
 
 /**
  * Fetches and highlights today's logged mood if already recorded.
  */
 async function loadMood() {
-    const res = await apiCall('/api/mood/today');
-    if (!res || !res.mood) return;
-
-    const currentMood = res.mood.mood;
-    document.querySelectorAll('.mood-option').forEach(el => el.classList.remove('selected'));
-    const target = document.querySelector(`[onclick="logMood('${currentMood}')"]`);
-    if (target) target.classList.add('selected');
-
     const noteInput = document.getElementById('moodNoteInput');
-    if (noteInput && res.mood.note) {
-        noteInput.value = res.mood.note;
+    if (noteInput && !noteInput._hasCharListener) {
+        noteInput._hasCharListener = true;
+        noteInput.addEventListener('input', updateMoodCharCount);
+    }
+
+    const res = await apiCall('/api/mood/today');
+    const feedbackEl = document.getElementById('moodFeedback');
+
+    if (!res || !res.mood) {
+        todayMoodRecorded = false;
+        if (feedbackEl) {
+            feedbackEl.innerHTML = '<span class="text-muted"><i class="fas fa-clock me-1"></i>No check-in yet today. Tap an emotion above to log.</span>';
+        }
+        return;
+    }
+
+    todayMoodRecorded = true;
+    currentSelectedMood = res.mood.mood || 'neutral';
+    selectMoodOption(currentSelectedMood);
+
+    if (noteInput) {
+        noteInput.value = res.mood.note || '';
+        updateMoodCharCount();
+    }
+
+    if (feedbackEl) {
+        feedbackEl.innerHTML = `<span class="badge bg-success-subtle text-success border border-success-subtle me-1"><i class="fas fa-check-circle me-1"></i>Logged for Today</span> Recorded as <strong class="text-capitalize">${res.mood.mood}</strong>${res.mood.note ? ' • Note attached' : ''}`;
     }
 }
 
@@ -597,14 +982,15 @@ async function loadMood() {
  * Logs or updates mood for today.
  */
 async function logMood(mood) {
-    document.querySelectorAll('.mood-option').forEach(el => el.classList.remove('selected'));
-    const target = document.querySelector(`[onclick="logMood('${mood}')"]`);
-    if (target) target.classList.add('selected');
+    currentSelectedMood = mood;
+    selectMoodOption(mood);
 
     const note = document.getElementById('moodNoteInput')?.value.trim() || null;
-    const res = await apiCall('/api/mood', 'POST', { mood, note });
+    const dateStr = getCurrentAppDateString();
+    const res = await apiCall('/api/mood', 'POST', { mood, note, date: dateStr });
     if (!res) return;
 
+    todayMoodRecorded = true;
     const feedbackEl = document.getElementById('moodFeedback');
     const messages = {
         happy: "Feeling good! Channel this positive momentum into your daily habits.",
@@ -612,10 +998,11 @@ async function logMood(mood) {
         sad: "Be gentle with yourself today. Even completing one micro-habit is a victory."
     };
     if (feedbackEl) {
-        feedbackEl.textContent = messages[mood] || "Mood logged.";
+        feedbackEl.innerHTML = `<span class="badge bg-success-subtle text-success border border-success-subtle me-1"><i class="fas fa-check-circle me-1"></i>Recorded</span> Logged as <strong class="text-capitalize">${mood}</strong>: ${messages[mood] || "Check-in saved."}`;
     }
 
     await loadMoodInsights();
+    await loadAnalytics();
 }
 
 /**
@@ -623,17 +1010,115 @@ async function logMood(mood) {
  */
 async function saveMoodWithNote() {
     const selectedOption = document.querySelector('.mood-option.selected');
-    let mood = 'neutral';
-    if (selectedOption) {
-        if (selectedOption.textContent.includes('Happy')) mood = 'happy';
-        else if (selectedOption.textContent.includes('Sad')) mood = 'sad';
+    const mood = selectedOption?.dataset?.mood || currentSelectedMood || 'neutral';
+    selectMoodOption(mood);
+
+    const noteInput = document.getElementById('moodNoteInput');
+    const note = noteInput ? noteInput.value.trim() : '';
+    const dateStr = getCurrentAppDateString();
+
+    const saveBtn = document.getElementById('saveMoodNoteBtn');
+    let originalHtml = '';
+    if (saveBtn) {
+        originalHtml = saveBtn.innerHTML;
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Saving...';
     }
-    const note = document.getElementById('moodNoteInput')?.value.trim();
-    const res = await apiCall('/api/mood', 'POST', { mood, note });
-    if (res) {
-        showToast('Mood note saved!', 'success');
+
+    try {
+        const res = await apiCall('/api/mood', 'POST', { mood, note: note || null, date: dateStr });
+        if (res) {
+            todayMoodRecorded = true;
+            if (noteInput) {
+                noteInput.value = res.note !== undefined && res.note !== null ? res.note : note;
+                updateMoodCharCount();
+            }
+            showToast('Check-in and reflection note saved to local database!', 'success');
+            const feedbackEl = document.getElementById('moodFeedback');
+            if (feedbackEl) {
+                feedbackEl.innerHTML = `<span class="badge bg-success-subtle text-success border border-success-subtle me-1"><i class="fas fa-save me-1"></i>Saved</span> Reflection note stored with your mood in the database.`;
+            }
+            if (saveBtn) {
+                saveBtn.innerHTML = '<i class="fas fa-check me-1"></i> Saved';
+                setTimeout(() => {
+                    if (saveBtn) {
+                        saveBtn.innerHTML = originalHtml || '<i class="fas fa-save me-1"></i>Save';
+                        saveBtn.disabled = false;
+                    }
+                }, 1400);
+            }
+            await loadMoodInsights();
+            await loadAnalytics();
+        }
+    } catch (err) {
+        console.error('Error saving mood note:', err);
+        showToast('Failed to save reflection note.', 'danger');
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalHtml || '<i class="fas fa-save me-1"></i>Save';
+        }
     }
 }
+
+/**
+ * Clears the reflection note from input and resets it in today's check-in.
+ */
+async function clearMoodNote() {
+    const noteInput = document.getElementById('moodNoteInput');
+    const feedbackEl = document.getElementById('moodFeedback');
+
+    if (!todayMoodRecorded) {
+        if (noteInput) {
+            noteInput.value = '';
+            updateMoodCharCount();
+        }
+        if (feedbackEl) {
+            feedbackEl.innerHTML = '<span class="text-muted"><i class="fas fa-info-circle me-1"></i>Reflection note field cleared.</span>';
+        }
+        showToast('Note field cleared.', 'info');
+        return;
+    }
+
+    const selectedOption = document.querySelector('.mood-option.selected');
+    const mood = selectedOption?.dataset?.mood || currentSelectedMood || 'neutral';
+    const dateStr = getCurrentAppDateString();
+
+    const clearBtn = document.getElementById('clearMoodBtn');
+    let originalHtml = '';
+    if (clearBtn) {
+        originalHtml = clearBtn.innerHTML;
+        clearBtn.disabled = true;
+        clearBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Clearing...';
+    }
+
+    try {
+        const res = await apiCall('/api/mood', 'POST', { mood, note: null, date: dateStr });
+        if (res) {
+            if (noteInput) {
+                noteInput.value = '';
+                updateMoodCharCount();
+            }
+            showToast('Reflection note cleared from database.', 'info');
+            if (feedbackEl) {
+                feedbackEl.innerHTML = `<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle me-1"><i class="fas fa-eraser me-1"></i>Cleared</span> Reflection note removed from today's check-in.`;
+            }
+            await loadMoodInsights();
+            await loadAnalytics();
+        }
+    } catch (err) {
+        console.error('Error clearing mood note:', err);
+        showToast('Failed to clear reflection note from database.', 'danger');
+    } finally {
+        if (clearBtn) {
+            clearBtn.disabled = false;
+            clearBtn.innerHTML = originalHtml || 'Clear';
+        }
+    }
+}
+
+window.saveMoodWithNote = saveMoodWithNote;
+window.clearMoodNote = clearMoodNote;
+window.logMood = logMood;
 
 // ============================================================================
 // 7. AI Coach Features
@@ -655,7 +1140,7 @@ async function loadAICoachMessage(forceRefresh = false) {
 
     textEl.textContent = res.message || "Consistency builds greatness.";
     if (badgeEl) {
-        badgeEl.textContent = res.source === 'gemini' ? 'Gemini AI Coach' : 'Adaptive Guidance';
+        badgeEl.textContent = 'Behavioral Coach';
     }
 }
 
@@ -681,6 +1166,7 @@ async function loadWeeklySummary(forceRefresh = false) {
 async function loadMoodInsights() {
     const container = document.getElementById('moodInsights');
     const textEl = document.getElementById('moodInsightText');
+    const badgeEl = document.getElementById('moodInsightStatusBadge');
     if (!container || !textEl) return;
 
     const res = await apiCall('/api/ai/mood-insights');
@@ -690,8 +1176,28 @@ async function loadMoodInsights() {
     }
 
     textEl.textContent = res.insight;
+    if (badgeEl) {
+        if (res.insight.includes('at least 3 days') || res.insight.includes('not enough')) {
+            badgeEl.className = 'badge bg-secondary-subtle text-secondary rounded-pill small';
+            badgeEl.textContent = 'Gathering Data';
+        } else {
+            badgeEl.className = 'badge bg-success-subtle text-success border border-success-subtle rounded-pill small';
+            badgeEl.textContent = 'Pattern Detected';
+        }
+    }
     container.style.display = 'block';
 }
+
+/**
+ * Sets goal text input and triggers micro-habit generation.
+ */
+window.setGoalAndGenerate = function(goal) {
+    const goalInput = document.getElementById('aiGoalInput');
+    if (goalInput) {
+        goalInput.value = goal;
+    }
+    generateAIHabits();
+};
 
 /**
  * Generates AI-recommended micro-habits based on user's stated goal.
@@ -699,55 +1205,89 @@ async function loadMoodInsights() {
 async function generateAIHabits() {
     const goalInput = document.getElementById('aiGoalInput');
     const container = document.getElementById('aiRecommendationsResult');
-    if (!goalInput || !container) return;
+    const generateBtn = document.getElementById('generateHabitsBtn');
+    if (!container) return;
 
-    const goal = goalInput.value.trim();
+    let goal = goalInput ? goalInput.value.trim() : '';
     if (!goal) {
-        showToast('Please type a goal first (e.g. better sleep, focus, hydration)', 'warning');
-        return;
+        goal = 'productivity and wellness';
+        if (goalInput) goalInput.value = goal;
+    }
+
+    let originalBtnHtml = '';
+    if (generateBtn) {
+        originalBtnHtml = generateBtn.innerHTML;
+        generateBtn.disabled = true;
+        generateBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Generating...';
     }
 
     container.innerHTML = `
         <div class="text-center py-4 text-muted">
             <div class="spinner-border text-primary mb-2" role="status"></div>
-            <p class="mb-0 small">Crafting tailored micro-habits with AI...</p>
+            <p class="mb-0 small">Synthesizing tailored micro-habits...</p>
         </div>
     `;
 
-    const res = await apiCall('/api/ai/habit-recommendations', 'POST', { goal });
-    if (!res || !res.recommendations || res.recommendations.length === 0) {
-        container.innerHTML = '<div class="text-danger small text-center py-3">Could not generate recommendations. Please try again.</div>';
-        return;
-    }
+    try {
+        const res = await apiCall('/api/ai/habit-recommendations', 'POST', { goal });
+        if (!res || !res.recommendations || res.recommendations.length === 0) {
+            container.innerHTML = '<div class="text-danger small text-center py-3">Could not generate recommendations. Please try again.</div>';
+            return;
+        }
 
-    container.innerHTML = res.recommendations.map(rec => {
-        const freqString = JSON.stringify(rec.frequency || ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']).replace(/"/g, '&quot;');
-        return `
-            <div class="card border p-3 rounded-3 shadow-sm recommendation-card">
-                <div class="d-flex justify-content-between align-items-start gap-2">
-                    <div class="d-flex align-items-center gap-3">
-                        <span class="display-6">${escapeHtml(rec.icon || '✨')}</span>
-                        <div>
-                            <h6 class="fw-bold mb-1">${escapeHtml(rec.title)}</h6>
-                            <p class="text-muted small mb-1">${escapeHtml(rec.why || '')}</p>
-                            <span class="badge bg-light text-secondary border small">${escapeHtml(rec.category || 'general')}</span>
-                            <span class="badge bg-light text-secondary border small">${escapeHtml(rec.duration || '<5 mins')}</span>
+        container._recommendations = res.recommendations;
+        if (container.dataset.recommendationListener !== 'true') {
+            container.dataset.recommendationListener = 'true';
+            container.addEventListener('click', (event) => {
+                const button = event.target.closest('.js-add-recommendation');
+                if (!button || !container.contains(button)) return;
+                const recommendation = container._recommendations?.[Number(button.dataset.index)];
+                if (!recommendation) return;
+                addRecommendedHabit(
+                    recommendation.title,
+                    recommendation.category || 'general',
+                    recommendation.icon || '',
+                    JSON.stringify(recommendation.frequency || ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']),
+                    button
+                );
+            });
+        }
+
+        container.innerHTML = res.recommendations.map((rec, index) => {
+            return `
+                <div class="card border p-3 rounded-3 shadow-sm recommendation-card">
+                    <div class="d-flex justify-content-between align-items-start gap-2">
+                        <div class="d-flex align-items-center gap-3">
+                            <span class="fs-2 text-primary d-inline-flex align-items-center justify-content-center p-2 rounded-3 bg-light" style="width: 48px; height: 48px;">${getHabitVectorIconHtml(rec)}</span>
+                            <div>
+                                <h6 class="fw-bold mb-1">${escapeHtml(rec.title)}</h6>
+                                <p class="text-muted small mb-1">${escapeHtml(rec.why || '')}</p>
+                                <span class="badge bg-light text-secondary border small">${escapeHtml(rec.category || 'general')}</span>
+                                <span class="badge bg-light text-secondary border small">${escapeHtml(rec.duration || '<5 mins')}</span>
+                            </div>
                         </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary text-nowrap rounded-pill px-3 js-add-recommendation" data-index="${index}">
+                            <i class="fas fa-plus me-1"></i> Add
+                        </button>
                     </div>
-                    <button class="btn btn-sm btn-outline-primary text-nowrap rounded-pill px-3"
-                            onclick="addRecommendedHabit('${escapeHtml(rec.title).replace(/'/g, "\\'")}', '${escapeHtml(rec.category || 'general')}', '${escapeHtml(rec.icon || '✨')}', '${freqString}')">
-                        <i class="fas fa-plus me-1"></i> Add
-                    </button>
                 </div>
-            </div>
-        `;
-    }).join('');
+            `;
+        }).join('');
+    } catch (err) {
+        console.error('Error generating recommendations:', err);
+        container.innerHTML = '<div class="text-danger small text-center py-3">Failed to load recommendations. Please check your network and try again.</div>';
+    } finally {
+        if (generateBtn) {
+            generateBtn.disabled = false;
+            generateBtn.innerHTML = originalBtnHtml || '<i class="fas fa-magic me-1"></i> Generate';
+        }
+    }
 }
 
 /**
  * Adds an AI recommended habit directly into user's habits list.
  */
-async function addRecommendedHabit(title, category, icon, frequencyStr) {
+async function addRecommendedHabit(title, category, icon, frequencyStr, triggerBtn = null) {
     let frequency = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
     try {
         frequency = JSON.parse(frequencyStr.replace(/&quot;/g, '"'));
@@ -760,14 +1300,41 @@ async function addRecommendedHabit(title, category, icon, frequencyStr) {
         frequency
     };
 
-    const res = await apiCall('/api/habits', 'POST', payload);
-    if (res) {
-        showToast(`Added "${title}" to your habits! 🎉`, 'success');
-        const modalEl = document.getElementById('aiRecommendationsModal');
-        const modalInstance = bootstrap.Modal.getInstance(modalEl);
-        if (modalInstance) modalInstance.hide();
-        await loadHabits();
-        await loadUserStats();
+    if (triggerBtn) {
+        triggerBtn.disabled = true;
+        triggerBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Adding...';
+    }
+
+    try {
+        const res = await apiCall('/api/habits', 'POST', payload);
+        if (res && (res.habit || res.id)) {
+            showToast(`Added "${title}" to your habits!`, 'success');
+            if (triggerBtn) {
+                triggerBtn.classList.remove('btn-outline-primary');
+                triggerBtn.classList.add('btn-success');
+                triggerBtn.innerHTML = '<i class="fas fa-check me-1"></i> Added';
+            }
+            const modalEl = document.getElementById('aiRecommendationsModal');
+            if (modalEl && typeof bootstrap !== 'undefined') {
+                const modalInstance = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
+                setTimeout(() => modalInstance.hide(), 350);
+            }
+            await loadHabits();
+            await loadUserStats();
+        } else if (res && res.error) {
+            showToast(res.error, 'danger');
+            if (triggerBtn) {
+                triggerBtn.disabled = false;
+                triggerBtn.innerHTML = '<i class="fas fa-plus me-1"></i> Add';
+            }
+        }
+    } catch (err) {
+        console.error('Error adding recommended habit:', err);
+        showToast('Failed to add habit.', 'danger');
+        if (triggerBtn) {
+            triggerBtn.disabled = false;
+            triggerBtn.innerHTML = '<i class="fas fa-plus me-1"></i> Add';
+        }
     }
 }
 
@@ -778,8 +1345,8 @@ async function addRecommendedHabit(title, category, icon, frequencyStr) {
 /**
  * Renders weekly bar chart, mood doughnut chart, and behavioral pattern insights.
  */
-async function loadAnalytics() {
-    const res = await apiCall('/api/analytics');
+async function loadAnalytics(analyticsPromise = null) {
+    const res = await (analyticsPromise || apiCall('/api/analytics'));
     if (!res) return;
 
     // Render Weekly Bar Chart
@@ -795,13 +1362,19 @@ async function loadAnalytics() {
                     {
                         label: 'Completed',
                         data: res.weekly_chart.map(d => d.completed),
-                        backgroundColor: '#667eea',
+                        backgroundColor: '#0ea5e9',
                         borderRadius: 6
                     },
                     {
                         label: 'Skipped',
                         data: res.weekly_chart.map(d => d.skipped),
                         backgroundColor: '#cbd5e1',
+                        borderRadius: 6
+                    },
+                    {
+                        label: 'Missed or unlogged',
+                        data: res.weekly_chart.map(d => d.missed),
+                        backgroundColor: '#f87171',
                         borderRadius: 6
                     }
                 ]
@@ -820,6 +1393,7 @@ async function loadAnalytics() {
                 }
             }
         });
+        updateChartTheme();
     }
 
     // Render Mood Doughnut Chart
@@ -833,7 +1407,7 @@ async function loadAnalytics() {
             moodChartInstance = new Chart(moodCanvas, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Happy 😊', 'Neutral 😐', 'Sad 😢'],
+                    labels: ['Happy', 'Neutral', 'Sad'],
                     datasets: [{
                         data: [dist.happy || 0, dist.neutral || 0, dist.sad || 0],
                         backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
@@ -848,6 +1422,7 @@ async function loadAnalytics() {
                     }
                 }
             });
+            updateChartTheme();
         }
     }
 
@@ -860,7 +1435,7 @@ async function loadAnalytics() {
             insightsContainer.innerHTML = res.insights.slice(0, 4).map(ins => `
                 <div class="p-3 rounded-3 bg-light border shadow-sm">
                     <div class="d-flex align-items-center gap-2 mb-1">
-                        <span class="fs-5">${escapeHtml(ins.icon || '💡')}</span>
+                        <span class="fs-5">${getInsightIconHtml(ins.icon)}</span>
                         <span class="fw-semibold small text-primary">${escapeHtml(ins.title || 'Insight')}</span>
                     </div>
                     <p class="mb-0 small text-muted">${escapeHtml(ins.message || '')}</p>
@@ -871,12 +1446,51 @@ async function loadAnalytics() {
 }
 
 // ============================================================================
-// 9. Page Lifecycle Bindings
+// 9. 3D Dynamic Card Tilt & Physics Engine
+// ============================================================================
+
+/**
+ * Attaches real-time 3D interactive cursor parallax tilt to UI cards.
+ */
+function init3DPhysics() {
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const hasFinePointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+    if (reducedMotion || !hasFinePointer) return;
+
+    const cardSelectors = '.stat-card, .feature-card, .ai-banner-card, .auth-card, .testimonial-card, .recommendation-card';
+
+    document.addEventListener('mousemove', (e) => {
+        const target = e.target.closest(cardSelectors);
+        if (!target) return;
+
+        const rect = target.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+
+        const rotateX = ((y - centerY) / centerY) * -7;
+        const rotateY = ((x - centerX) / centerX) * 7;
+
+        target.style.transform = `perspective(1000px) rotateX(${rotateX.toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg) translateZ(12px)`;
+    });
+
+    document.addEventListener('mouseout', (e) => {
+        const target = e.target.closest(cardSelectors);
+        if (target && !target.contains(e.relatedTarget)) {
+            target.style.transform = '';
+        }
+    });
+}
+
+// ============================================================================
+// 10. Page Lifecycle Bindings
 // ============================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
     loadDarkMode();
     updateNavbarState();
+    init3DPhysics();
 
     // If on dashboard view, run full dashboard initialization
     if (document.getElementById('habitsList')) {

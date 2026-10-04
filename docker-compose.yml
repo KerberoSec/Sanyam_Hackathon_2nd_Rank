@@ -6,25 +6,33 @@ services:
     container_name: habitflow-app
     image: habitflow:latest
     ports:
-      - "5000:5000"
+      - "${APP_HOST_BIND_ADDRESS:-0.0.0.0}:5000:5000"
     environment:
       FLASK_APP: app.py
-      FLASK_ENV: production
+      FLASK_ENV: "${FLASK_ENV:-development}"
       PYTHONUNBUFFERED: 1
       DATABASE_URL: sqlite:////app/instance/habit_tracker.db
-      SECRET_KEY: dev-secret-key-change-in-production
-      JWT_SECRET_KEY: dev-jwt-secret-key-change-in-production
+      SECRET_KEY: "${SECRET_KEY:-habitflow-production-secret-key-32chars-minimum}"
+      JWT_SECRET_KEY: "${JWT_SECRET_KEY:-habitflow-production-jwt-key-32chars-minimum}"
+      MAIL_SERVER: "${MAIL_SERVER:-smtp.gmail.com}"
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USE_TLS: ${MAIL_USE_TLS:-true}
+      MAIL_USERNAME: "${MAIL_USERNAME:-}"
+      MAIL_PASSWORD: "${MAIL_PASSWORD:-}"
+      MAIL_DEFAULT_SENDER: "${MAIL_DEFAULT_SENDER:-noreply@habitflow.local}"
+      FRONTEND_URL: "${FRONTEND_URL:-http://localhost:5000}"
+      TRUSTED_PROXY_COUNT: ${TRUSTED_PROXY_COUNT:-0}
       DEBUG: 0
     volumes:
       - habitflow-data:/app/instance
     networks:
       - habitflow-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
-      interval: 30s
-      timeout: 10s
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 15s
+      timeout: 5s
       retries: 3
-      start_period: 40s
+      start_period: 15s
     restart: unless-stopped
     stdin_open: true
     tty: true

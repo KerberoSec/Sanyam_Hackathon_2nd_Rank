@@ -1,17 +1,18 @@
 """
-HabitFlow AI Coaching Routes
+HabitFlow Coaching Routes
 ============================
-This module exposes REST API endpoints for AI-driven coaching features:
-- GET  /api/ai/daily-message: Daily personalized behavioral motivational guidance.
-- GET  /api/ai/weekly-summary: Comprehensive weekly review and pattern recognition.
-- POST /api/ai/habit-recommendations: Smart micro-habit recommendations based on personal goals.
-- GET  /api/ai/mood-insights: Emotional intelligence analysis correlating mood and habits.
-- GET  /api/ai/health: Diagnostic status of the AI coaching service and model availability.
+This module exposes API endpoints for local, rule-based coaching features:
+- GET  /api/ai/daily-message: Daily message based on habit activity.
+- GET  /api/ai/weekly-summary: Weekly review of completion patterns.
+- POST /api/ai/habit-recommendations: Habit ideas based on a supplied goal.
+- GET  /api/ai/mood-insights: Descriptive comparisons of logged moods and habits.
+- GET  /api/ai/health: Status of the coaching service.
 """
 
-from datetime import date, datetime, timedelta, timezone
-from flask import Blueprint, request, jsonify
-from models import User, AIMessage, Habit, db
+from datetime import datetime, timedelta, timezone
+from flask import Blueprint, request, jsonify, current_app
+from date_utils import current_date
+from models import User, AIMessage, Habit, HabitLog, Mood, db
 from routes.auth import token_required
 from services.ai_coach import AICoachService
 from services.streak_engine import StreakEngine
@@ -24,16 +25,16 @@ ai_bp = Blueprint('ai', __name__, url_prefix='/api/ai')
 def get_daily_message(current_user: User):
     """
     Retrieves or generates today's personalized daily habit coaching message.
-    Checks the database cache first to conserve external API quota and minimize latency.
+    Checks the database cache first to avoid repeating the same daily calculation.
     Pass `?refresh=true` to force a new message generation.
-    
+
     Args:
         current_user: Authenticated User object.
-        
+
     Returns:
         JSON response with the coaching message, cached status, and generation metadata.
     """
-    today = date.today()
+    today = current_date()
     force_refresh = request.args.get('refresh', '').lower() in ('true', '1', 'yes')
 
     # Check database cache unless refresh was explicitly requested
@@ -56,7 +57,7 @@ def get_daily_message(current_user: User):
     stats = StreakEngine.calculate_stats_for_user(current_user.id)
     active_habits = [h.to_dict() for h in current_user.habits.filter_by(active=True).all()]
 
-    # Generate coaching message (Gemini or algorithmic fallback)
+    # Generate a deterministic coaching message from local activity data.
     result = AICoachService.generate_daily_coach_message(stats, active_habits)
     message_text = result.get('message', AICoachService.FALLBACK_MESSAGES['daily'])
 
@@ -84,7 +85,7 @@ def get_daily_message(current_user: User):
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        print(f"Warning: Failed to cache daily AI message: {e}")
+        current_app.logger.warning(f"Failed to cache daily coaching message: {e}")
 
     return jsonify({
         'message': message_text,
@@ -102,16 +103,16 @@ def get_weekly_summary(current_user: User):
     Retrieves or generates a weekly habit performance review.
     Analyzes completions across days of the week, highlights peak consistency,
     and offers behavioral psychology recommendations.
-    
+
     Args:
         current_user: Authenticated User object.
-        
+
     Returns:
         JSON response with the weekly summary review.
     """
     from routes.analytics import get_weekly_completion_data
 
-    today = date.today()
+    today = current_date()
     force_refresh = request.args.get('refresh', '').lower() in ('true', '1', 'yes')
 
     # Check cache for today
@@ -133,7 +134,7 @@ def get_weekly_summary(current_user: User):
     # Collect stats and weekly breakdown
     stats = StreakEngine.calculate_stats_for_user(current_user.id)
     active_habits = [h.to_dict() for h in current_user.habits.filter_by(active=True).all()]
-    weekly_data = get_weekly_completion_data(current_user.id)
+    weekly_data = get_weekly_completion_data(current_user.id, days=7)
 
     # Generate review
     result = AICoachService.generate_weekly_summary(stats, active_habits, weekly_data)
@@ -163,7 +164,7 @@ def get_weekly_summary(current_user: User):
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        print(f"Warning: Failed to cache weekly AI summary: {e}")
+        current_app.logger.warning(f"Failed to cache weekly AI summary: {e}")
 
     return jsonify({
         'summary': summary_text,
@@ -175,20 +176,30 @@ def get_weekly_summary(current_user: User):
 
 
 @ai_bp.route('/habit-recommendations', methods=['POST'])
+@ai_bp.route('/recommend-habits', methods=['POST'])
 @token_required
 def get_habit_recommendations(current_user: User):
     """
     Recommends 3 small micro-habits based on a user's stated goal
     (e.g., 'better sleep', 'deep work focus', 'strength training', 'mindfulness').
-    
+
     Expected JSON Body:
         { "goal": "better sleep" }
-        
+
     Returns:
         JSON response with 3 recommended micro-habits and rationale.
     """
-    data = request.get_json(silent=True) or {}
-    user_goal = data.get('goal', 'better focus and productivity').strip()
+    data = request.get_json(silent=True)
+    if data is None:
+        data = {}
+    if not isinstance(data, dict):
+        return jsonify({'message': 'Request payload must be a JSON object.'}), 400
+    goal_value = data.get('goal', 'better focus and productivity') or ''
+    if not isinstance(goal_value, str):
+        return jsonify({'message': 'Goal must be a text value.'}), 400
+    user_goal = goal_value.strip() or 'better focus and productivity'
+    if len(user_goal) > 300:
+        user_goal = user_goal[:300]
 
     stats = StreakEngine.calculate_stats_for_user(current_user.id)
     existing_habits = [h.to_dict() for h in current_user.habits.filter_by(active=True).all()]
@@ -210,18 +221,19 @@ def get_mood_insights(current_user: User):
     """
     Analyzes the correlation between the user's logged emotional wellbeing
     and their habit completion consistency over the past 30 days.
-    
+
     Args:
         current_user: Authenticated User object.
-        
+
     Returns:
         JSON response with emotional correlation insights.
     """
-    thirty_days_ago = date.today() - timedelta(days=30)
-    from models import Mood
+    today = current_date()
+    thirty_days_ago = today - timedelta(days=29)
     recent_moods = Mood.query.filter(
         Mood.user_id == current_user.id,
-        Mood.date >= thirty_days_ago
+        Mood.date >= thirty_days_ago,
+        Mood.date <= today
     ).all()
 
     if not recent_moods:
@@ -229,14 +241,51 @@ def get_mood_insights(current_user: User):
             'insight': 'Log your daily mood alongside your habits to unlock personalized emotional wellness insights!',
             'happy_percent': None,
             'source': 'default',
-            'error': 'No mood data recorded yet'
+            'error': None
         }), 200
 
-    mood_dicts = [m.to_dict() for m in recent_moods]
-    stats = StreakEngine.calculate_stats_for_user(current_user.id)
-    completion_rate = stats.get('consistency_score', 0)
+    habits = [
+        habit for habit in Habit.query.filter_by(user_id=current_user.id).all()
+        if (habit.created_date is None or habit.created_date <= today)
+        and (habit.archived_date is None or habit.archived_date >= thirty_days_ago)
+    ]
+    habit_by_id = {habit.id: habit for habit in habits}
+    completed_by_date = {}
+    if habit_by_id:
+        logs = HabitLog.query.filter(
+            HabitLog.user_id == current_user.id,
+            HabitLog.habit_id.in_(list(habit_by_id.keys())),
+            HabitLog.date >= thirty_days_ago,
+            HabitLog.date <= today,
+            HabitLog.status == 'completed'
+        ).all()
+        for log in logs:
+            if (
+                log.date >= (habit_by_id[log.habit_id].created_date or log.date)
+                and (
+                    habit_by_id[log.habit_id].archived_date is None
+                    or log.date <= habit_by_id[log.habit_id].archived_date
+                )
+                and habit_by_id[log.habit_id].is_scheduled_for_date(log.date)
+            ):
+                completed_by_date[log.date] = completed_by_date.get(log.date, 0) + 1
 
-    result = AICoachService.analyze_mood_habit_correlation(mood_dicts, completion_rate)
+    daily_records = []
+    for mood in recent_moods:
+        scheduled = sum(
+            mood.date >= (habit.created_date or mood.date)
+            and (habit.archived_date is None or mood.date <= habit.archived_date)
+            and habit.is_scheduled_for_date(mood.date)
+            for habit in habits
+        )
+        if scheduled:
+            daily_records.append({
+                'mood': mood.mood,
+                'scheduled': scheduled,
+                'completed': completed_by_date.get(mood.date, 0),
+            })
+
+    result = AICoachService.analyze_mood_habit_correlation(daily_records)
 
     return jsonify({
         'insight': result.get('insight', 'Habits and mood reinforce each other.'),
@@ -250,20 +299,16 @@ def get_mood_insights(current_user: User):
 @ai_bp.route('/health', methods=['GET'])
 def ai_health_check():
     """
-    Public health check endpoint inspecting the status of the AI coaching service,
-    verifying SDK installation, API key configuration, and fallback readiness.
-    
+    Public health check endpoint inspecting the status of the behavioral coaching engine.
+
     Returns:
         JSON response with diagnostic parameters.
     """
-    available = AICoachService.is_available()
-    api_key_configured = AICoachService.get_api_key() is not None
-
     return jsonify({
         'status': 'healthy',
-        'ai_available': available,
-        'api_key_configured': api_key_configured,
-        'model': AICoachService.DEFAULT_MODEL if available else None,
+        'engine': AICoachService.ENGINE_NAME,
+        'version': AICoachService.ENGINE_VERSION,
+        'service_mode': 'native_behavioral_engine',
         'fallback_ready': True,
-        'service_mode': 'gemini_generative' if available else 'algorithmic_fallback'
+        'ready': True
     }), 200

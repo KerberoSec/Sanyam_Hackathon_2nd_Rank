@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}About HabitFlow - Build Better Habits{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Hero Header -->
+    <div class="text-center max-w-800 mx-auto mb-5">
+        <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill fw-bold mb-3">
+            <i class="fas fa-info-circle me-1"></i> About HabitFlow
+        </span>
+        <h1 class="display-5 fw-bold mb-3">Empowering Daily Growth Through Consistency</h1>
+        <p class="lead text-secondary mb-4">
+            HabitFlow is an intelligent personal habit tracker engineered to help you build resilient daily routines,
+            track emotional wellbeing, and celebrate incremental progress through thoughtful gamification.
+        </p>
+        <div class="d-flex justify-content-center gap-2 flex-wrap">
+            <a href="/register" class="btn btn-primary px-4 py-2 rounded-pill fw-semibold shadow-sm">
+                <i class="fas fa-user-plus me-1"></i> Get Started Free
+            </a>
+            <a href="/dashboard" class="btn btn-outline-secondary px-4 py-2 rounded-pill fw-semibold">
+                <i class="fas fa-chart-line me-1"></i> View Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Core Philosophy Cards -->
+    <div class="row g-4 mb-5">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100 rounded-4 p-4 feature-card">
+                <div class="feature-icon-wrapper mb-3" style="background: rgba(2, 132, 199, 0.1); color: var(--primary);">
+                    <i class="fas fa-seedling fs-3"></i>
+                </div>
+                <h5 class="fw-bold mb-2">Atomic Progress</h5>
+                <p class="text-secondary small mb-0">
+                    Grand transformations start with micro-habits. We focus on low-friction actions that take less than five
+                    minutes to complete, making daily consistency effortless and sustainable.
+                </p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100 rounded-4 p-4 feature-card">
+                <div class="feature-icon-wrapper mb-3" style="background: rgba(13, 148, 136, 0.1); color: var(--secondary);">
+                    <i class="fas fa-shield-heart fs-3"></i>
+                </div>
+                <h5 class="fw-bold mb-2">Forgiving Streak Design</h5>
+                <p class="text-secondary small mb-0">
+                    Real life isn't rigid. HabitFlow supports flexible weekly schedules, excused skip days that safeguard your streak,
+                    and morning grace periods so you never lose momentum unfairly.
+                </p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100 rounded-4 p-4 feature-card">
+                <div class="feature-icon-wrapper mb-3" style="background: rgba(16, 185, 129, 0.1); color: var(--success);">
+                    <i class="fas fa-heart-pulse fs-3"></i>
+                </div>
+                <h5 class="fw-bold mb-2">Holistic Wellbeing</h5>
+                <p class="text-secondary small mb-0">
+                    Your routines and emotions are deeply intertwined. Daily mood check-ins correlate how emotional states
+                    impact your productivity, unlocking meaningful self-awareness over 30 and 90 days.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Architectural Pillars Section -->
+    <div class="card border-0 shadow-sm rounded-4 p-4 p-lg-5 mb-5" style="background: var(--card-bg);">
+        <h3 class="fw-bold mb-4 text-center">Core Pillars of the HabitFlow Platform</h3>
+        <div class="row g-4">
+            <div class="col-md-6 d-flex gap-3">
+                <div class="p-3 rounded-3 bg-primary-subtle text-primary align-self-start fs-4" style="width: 54px; height: 54px; display: grid; place-items: center;">
+                    <i class="fas fa-calendar-alt"></i>
+                </div>
+                <div>
+                    <h6 class="fw-bold mb-1">Frequency-Aware Streak Engine</h6>
+                    <p class="text-secondary small mb-0">
+                        Unlike naive trackers that require logging every day, HabitFlow respects custom schedules (e.g. weekdays-only, MWF).
+                        Unscheduled days never break your active run.
+                    </p>
+                </div>
+            </div>
+            <div class="col-md-6 d-flex gap-3">
+                <div class="p-3 rounded-3 bg-info-subtle text-info align-self-start fs-4" style="width: 54px; height: 54px; display: grid; place-items: center;">
+                    <i class="fas fa-brain"></i>
+                </div>
+                <div>
+                    <h6 class="fw-bold mb-1">Native Rule-Based Behavioral Coach</h6>
+                    <p class="text-secondary small mb-0">
+                        Our deterministic coaching service runs entirely locally on your server. It highlights milestone streaks,
+                        detects inactivity, notices power days, and suggests goal-matched micro-habits without third-party data leakage.
+                    </p>
+                </div>
+            </div>
+            <div class="col-md-6 d-flex gap-3">
+                <div class="p-3 rounded-3 bg-warning-subtle text-warning align-self-start fs-4" style="width: 54px; height: 54px; display: grid; place-items: center;">
+                    <i class="fas fa-trophy"></i>
+                </div>
+                <div>
+                    <h6 class="fw-bold mb-1">Engaging Gamification & Badges</h6>
+                    <p class="text-secondary small mb-0">
+                        Earn experience points (XP) for completions, excused skips, and 7/14/30-day streak milestones.
+                        Progress through dynamic levels and unlock achievement badges from 'First Week' to 'Yearly Champion'.
+                    </p>
+                </div>
+            </div>
+            <div class="col-md-6 d-flex gap-3">
+                <div class="p-3 rounded-3 bg-success-subtle text-success align-self-start fs-4" style="width: 54px; height: 54px; display: grid; place-items: center;">
+                    <i class="fas fa-lock"></i>
+                </div>
+                <div>
+                    <h6 class="fw-bold mb-1">Security & Data Sovereignty</h6>
+                    <p class="text-secondary small mb-0">
+                        Built with modern defense-in-depth: Scrypt password hashing, stateful JWT revocation via token versions,
+                        strict Content Security Policies (CSP), and shared database rate limiters.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Developer & Project Information -->
+    <div class="card border-0 shadow-sm rounded-4 p-4 p-lg-5 mb-5 bg-dark text-white" style="background-color: #070c14 !important; border: 1px solid #1e293b !important;">
+        <div class="row align-items-center gy-4">
+            <div class="col-lg-8">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <span class="badge bg-primary px-3 py-1 rounded-pill">Open Source Engineering</span>
+                    <span class="badge bg-secondary px-3 py-1 rounded-pill">v3.0.3</span>
+                </div>
+                <h4 class="fw-bold text-white mb-2">Crafted with Precision by Arun Kumar</h4>
+                <p class="text-light-emphasis small mb-0" style="color: #cbd5e1 !important; line-height: 1.7;">
+                    HabitFlow was architected to demonstrate enterprise-grade Flask application patterns:
+                    clean layered services, atomic streak calculations, idempotent gamification rewards,
+                    and cross-database compatibility across SQLite, PostgreSQL, and MySQL.
+                </p>
+            </div>
+            <div class="col-lg-4 text-lg-end">
+                <div class="d-flex justify-content-lg-end gap-2 flex-wrap">
+                    <a href="https://github.com/KerberoSec" target="_blank" rel="noopener" class="btn btn-outline-light btn-sm rounded-pill px-3 py-2">
+                        <i class="fab fa-github me-1"></i> GitHub
+                    </a>
+                    <a href="https://linkedin.com/in/arunkumar31072006" target="_blank" rel="noopener" class="btn btn-outline-light btn-sm rounded-pill px-3 py-2">
+                        <i class="fab fa-linkedin-in me-1"></i> LinkedIn
+                    </a>
+                    <a href="https://x.com/ArunKumar310706" target="_blank" rel="noopener" class="btn btn-outline-light btn-sm rounded-pill px-3 py-2">
+                        <i class="fab fa-x-twitter me-1"></i> Twitter/X
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom CTA -->
+    <div class="text-center py-3">
+        <h4 class="fw-bold mb-2">Ready to transform your daily routines?</h4>
+        <p class="text-secondary small mb-3">Join HabitFlow today and start building consistency one habit at a time.</p>
+        <a href="/register" class="btn btn-primary px-4 py-2 rounded-pill fw-semibold shadow-sm">
+            Create Free Account
+        </a>
+    </div>
+</div>
+{% endblock %}

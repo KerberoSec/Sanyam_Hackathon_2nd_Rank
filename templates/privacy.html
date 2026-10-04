@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}Privacy Policy - HabitFlow{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Header Section -->
+    <div class="text-center max-w-800 mx-auto mb-5">
+        <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill fw-bold mb-3">
+            <i class="fas fa-shield-alt me-1"></i> Data Protection & Sovereignty
+        </span>
+        <h1 class="display-5 fw-bold mb-2">Privacy Policy</h1>
+        <p class="text-secondary small mb-0">Effective Date: October 4, 2026 · HabitFlow v3.0.3</p>
+    </div>
+
+    <!-- Quick Overview Summary Grid -->
+    <div class="row g-3 mb-5">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 p-3 h-100 text-center">
+                <i class="fas fa-user-shield fs-2 text-primary mb-2"></i>
+                <h6 class="fw-bold mb-1">Zero Data Selling</h6>
+                <small class="text-muted">Your habits and personal notes are never monetized, traded, or brokered.</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 p-3 h-100 text-center">
+                <i class="fas fa-lock fs-2 text-success mb-2"></i>
+                <h6 class="fw-bold mb-1">Salted Hashing</h6>
+                <small class="text-muted">Passwords are hashed using industry-standard Scrypt encryption algorithms.</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 p-3 h-100 text-center">
+                <i class="fas fa-server fs-2 text-info mb-2"></i>
+                <h6 class="fw-bold mb-1">Local Behavioral AI</h6>
+                <small class="text-muted">AI coaching runs on your local server. No habit or mood data is sent to external LLMs.</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 p-3 h-100 text-center">
+                <i class="fas fa-trash-alt fs-2 text-warning mb-2"></i>
+                <h6 class="fw-bold mb-1">Right to Erase</h6>
+                <small class="text-muted">Permanently purge individual habits, account history, or records upon request.</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Policy Sections -->
+    <div class="card border-0 shadow-sm rounded-4 p-4 p-lg-5 mb-5" style="background: var(--card-bg);">
+        <div class="d-flex flex-column gap-4">
+            <div>
+                <h4 class="fw-bold mb-2 text-primary">1. Information We Collect</h4>
+                <p class="text-secondary small mb-2">
+                    To deliver accurate streak calculations and individualized habit tracking, HabitFlow collects the minimum necessary data:
+                </p>
+                <ul class="text-secondary small mb-0 d-flex flex-column gap-2">
+                    <li><strong>Account Credentials:</strong> Display name, email address, and a cryptographically salted password hash. We never store plain text passwords.</li>
+                    <li><strong>Habit Definitions:</strong> Titles, categories, icons, color selections, weekly schedules (e.g. Monday-Friday), and optional notification reminder times.</li>
+                    <li><strong>Daily Activity Logs:</strong> Status records ('completed', 'skipped', 'missed') attached to UTC calendar dates, along with earned gamification experience points.</li>
+                    <li><strong>Emotional Wellbeing Records:</strong> Self-reported daily mood check-ins ('happy', 'neutral', 'sad') and optional personal reflection notes (up to 1,000 characters).</li>
+                    <li><strong>Gamification State:</strong> Cumulative XP points, current player level, and unlocked milestone badges with achievement timestamps.</li>
+                </ul>
+            </div>
+
+            <hr class="border-secondary-subtle my-1">
+
+            <div>
+                <h4 class="fw-bold mb-2 text-primary">2. How We Use Your Information</h4>
+                <p class="text-secondary small mb-2">
+                    Information logged in HabitFlow is processed exclusively to provide personal productivity metrics:
+                </p>
+                <ul class="text-secondary small mb-0 d-flex flex-column gap-2">
+                    <li>Computing unbroken streak counters, longest streaks, consistency percentages, and 12-month completion trends.</li>
+                    <li>Detecting multi-day inactivity and offering supportive comeback guidance.</li>
+                    <li>Analyzing statistical correlations between your self-reported emotional states and habit adherence.</li>
+                    <li>Securing authenticated sessions via cryptographic JSON Web Tokens (JWT) and enforcing distributed rate limits.</li>
+                </ul>
+            </div>
+
+            <hr class="border-secondary-subtle my-1">
+
+            <div>
+                <h4 class="fw-bold mb-2 text-primary">3. Local-First Behavioral AI & Coaching</h4>
+                <p class="text-secondary small mb-0">
+                    HabitFlow's AI Coach operates using an internal, rule-based algorithmic behavioral engine. All habit suggestions,
+                    weekly summary reviews, and mood correlations are generated locally on the host application server.
+                    <strong>We do not transmit your habit history, notes, or mood data to third-party artificial intelligence providers, external APIs, or commercial LLM services.</strong>
+                </p>
+            </div>
+
+            <hr class="border-secondary-subtle my-1">
+
+            <div>
+                <h4 class="fw-bold mb-2 text-primary">4. Security Architecture & Safeguards</h4>
+                <p class="text-secondary small mb-2">
+                    HabitFlow implements rigorous, production-grade security safeguards:
+                </p>
+                <ul class="text-secondary small mb-0 d-flex flex-column gap-2">
+                    <li><strong>Password Hashing:</strong> Werkzeug / Scrypt key-derivation algorithms with unique cryptographic salts.</li>
+                    <li><strong>Token Revocation:</strong> Each user record maintains an incrementing <kbd>token_version</kbd>. Changing passwords or logging out immediately revokes all prior JWT tokens server-side.</li>
+                    <li><strong>Modern HTTP Headers:</strong> Strict Content-Security-Policy (CSP), <kbd>X-Frame-Options: SAMEORIGIN</kbd>, <kbd>X-Content-Type-Options: nosniff</kbd>, and restrictive <kbd>Permissions-Policy</kbd>.</li>
+                    <li><strong>Anti-Abuse Protections:</strong> Shared database rate limiters prevent brute-force attacks across login and password recovery endpoints.</li>
+                </ul>
+            </div>
+
+            <hr class="border-secondary-subtle my-1">
+
+            <div>
+                <h4 class="fw-bold mb-2 text-primary">5. Cookies & Local Storage</h4>
+                <p class="text-secondary small mb-0">
+                    HabitFlow uses <kbd>localStorage</kbd> solely to maintain your authentication bearer token, basic profile cache (name, level, XP),
+                    and your dark mode visual theme preference. We do not use third-party analytics cookies, advertising trackers, or tracking pixels.
+                </p>
+            </div>
+
+            <hr class="border-secondary-subtle my-1">
+
+            <div>
+                <h4 class="fw-bold mb-2 text-primary">6. Your Data Rights & Deletion</h4>
+                <p class="text-secondary small mb-2">
+                    You maintain complete ownership and control over your personal data:
+                </p>
+                <ul class="text-secondary small mb-0 d-flex flex-column gap-2">
+                    <li><strong>Soft vs. Hard Deletion:</strong> Archiving a habit preserves past completion history for analytics. Calling delete with <kbd>?permanent=true</kbd> completely purges the habit and all attached daily logs.</li>
+                    <li><strong>Account Erasure:</strong> Deleting an account executes a cascade deletion across all associated habits, logs, mood check-ins, messages, and achievement badges.</li>
+                </ul>
+            </div>
+
+            <hr class="border-secondary-subtle my-1">
+
+            <div>
+                <h4 class="fw-bold mb-2 text-primary">7. Contact & Security Inquiries</h4>
+                <p class="text-secondary small mb-0">
+                    If you have questions regarding this Privacy Policy or wish to report a security disclosure, please contact developer Arun Kumar via GitHub at
+                    <a href="https://github.com/KerberoSec" target="_blank" rel="noopener" class="text-primary fw-semibold">@KerberoSec</a>.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

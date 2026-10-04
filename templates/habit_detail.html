@@ -11,10 +11,10 @@
             <span>Back to Dashboard</span>
         </a>
         <div class="d-flex gap-2">
-            <button class="btn btn-outline-primary btn-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#editHabitModal">
+            <button class="btn btn-outline-primary btn-sm rounded-pill px-3" id="btnEditHabit" data-bs-toggle="modal" data-bs-target="#editHabitModal">
                 <i class="fas fa-edit me-1"></i> Edit Habit
             </button>
-            <button class="btn btn-outline-danger btn-sm rounded-pill px-3" onclick="confirmDeleteCurrentHabit()">
+            <button class="btn btn-outline-danger btn-sm rounded-pill px-3" id="btnDeleteHabit" onclick="confirmDeleteCurrentHabit()" aria-label="Delete this habit">
                 <i class="fas fa-trash-alt me-1"></i> Delete Habit
             </button>
         </div>
@@ -25,7 +25,7 @@
         <div class="card-body p-4">
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
                 <div class="d-flex align-items-center gap-3">
-                    <div id="habitIcon" class="display-3 p-3 rounded-4 bg-light shadow-sm text-center" style="min-width: 90px;">✨</div>
+                    <div id="habitIcon" class="display-3 p-3 rounded-4 bg-light shadow-sm text-center" style="min-width: 90px;"></div>
                     <div>
                         <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
                             <h2 id="habitTitle" class="fw-bold mb-0">Loading...</h2>
@@ -38,16 +38,17 @@
                 </div>
 
                 <!-- Quick Action Buttons for Today -->
-                <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <button id="btnCompleteToday" class="btn btn-success rounded-pill px-3 py-2 d-flex align-items-center gap-1 shadow-sm" onclick="logHabitAction('complete')">
+                <div id="todayHabitActions" class="d-flex align-items-center gap-2 flex-wrap">
+                    <button type="button" id="btnCompleteToday" hidden class="btn btn-success rounded-pill px-3 py-2 d-flex align-items-center gap-1 shadow-sm" onclick="logHabitAction('complete')">
                         <i class="fas fa-check"></i> Complete Today
                     </button>
-                    <button id="btnSkipToday" class="btn btn-outline-secondary rounded-pill px-3 py-2 d-flex align-items-center gap-1 shadow-sm" onclick="logHabitAction('skip')">
+                    <button type="button" id="btnSkipToday" hidden class="btn btn-outline-secondary rounded-pill px-3 py-2 d-flex align-items-center gap-1 shadow-sm" onclick="logHabitAction('skip')">
                         <i class="fas fa-forward"></i> Skip
                     </button>
-                    <button id="btnMissToday" class="btn btn-outline-danger rounded-pill px-3 py-2 d-flex align-items-center gap-1 shadow-sm" onclick="logHabitAction('miss')">
+                    <button type="button" id="btnMissToday" hidden class="btn btn-outline-danger rounded-pill px-3 py-2 d-flex align-items-center gap-1 shadow-sm" onclick="logHabitAction('miss')">
                         <i class="fas fa-times"></i> Miss
                     </button>
+                    <span id="todayActionStatus" class="small text-muted" role="status" aria-live="polite"></span>
                 </div>
             </div>
         </div>
@@ -58,7 +59,7 @@
         <div class="col-sm-6 col-lg-3">
             <div class="stat-card shadow-sm">
                 <div class="stat-icon" style="background: linear-gradient(135deg, #f59e0b, #ef4444);">
-                    🔥
+                    <i class="fas fa-fire"></i>
                 </div>
                 <div class="stat-content">
                     <div class="stat-label">Current Streak</div>
@@ -69,8 +70,8 @@
         </div>
         <div class="col-sm-6 col-lg-3">
             <div class="stat-card shadow-sm">
-                <div class="stat-icon" style="background: linear-gradient(135deg, #8b5cf6, #ec4899);">
-                    👑
+                <div class="stat-icon" style="background: linear-gradient(135deg, #0d9488, #059669);">
+                    <i class="fas fa-crown"></i>
                 </div>
                 <div class="stat-content">
                     <div class="stat-label">Longest Streak</div>
@@ -82,7 +83,7 @@
         <div class="col-sm-6 col-lg-3">
             <div class="stat-card shadow-sm">
                 <div class="stat-icon" style="background: linear-gradient(135deg, #10b981, #059669);">
-                    ✅
+                    <i class="fas fa-check-circle"></i>
                 </div>
                 <div class="stat-content">
                     <div class="stat-label">Completions</div>
@@ -93,8 +94,8 @@
         </div>
         <div class="col-sm-6 col-lg-3">
             <div class="stat-card shadow-sm">
-                <div class="stat-icon" style="background: linear-gradient(135deg, #3b82f6, #6366f1);">
-                    📊
+                <div class="stat-icon" style="background: linear-gradient(135deg, #0ea5e9, #0284c7);">
+                    <i class="fas fa-chart-bar"></i>
                 </div>
                 <div class="stat-content">
                     <div class="stat-label">30d Consistency</div>
@@ -158,7 +159,7 @@
                             <span id="consistency7d" class="fw-bold text-primary">0%</span>
                         </div>
                         <div class="progress" style="height: 10px;">
-                            <div id="progress7d" class="progress-bar bg-primary" role="progressbar" style="width: 0%"></div>
+                            <div id="progress7d" class="progress-bar bg-primary" role="progressbar" aria-label="7-day consistency" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="0%" style="width: 0%"></div>
                         </div>
                     </div>
                     <div class="mb-4">
@@ -167,16 +168,16 @@
                             <span id="consistency30d" class="fw-bold text-info">0%</span>
                         </div>
                         <div class="progress" style="height: 10px;">
-                            <div id="progress30d" class="progress-bar bg-info" role="progressbar" style="width: 0%"></div>
+                            <div id="progress30d" class="progress-bar bg-info" role="progressbar" aria-label="30-day consistency" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="0%" style="width: 0%"></div>
                         </div>
                     </div>
                     <div>
                         <div class="d-flex justify-content-between mb-1">
-                            <span class="fw-semibold">Lifetime Completion Rate</span>
+                            <span class="fw-semibold">30-Day Completion Rate</span>
                             <span id="completionRate" class="fw-bold text-success">0%</span>
                         </div>
                         <div class="progress" style="height: 10px;">
-                            <div id="progressRate" class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+                            <div id="progressRate" class="progress-bar bg-success" role="progressbar" aria-label="30-day completion rate" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="0%" style="width: 0%"></div>
                         </div>
                     </div>
                 </div>
@@ -224,7 +225,7 @@
                             </select>
                         </div>
                         <div class="col-4">
-                            <label for="editHabitIcon" class="form-label fw-semibold">Icon / Emoji</label>
+                            <label for="editHabitIcon" class="form-label fw-semibold">Icon Symbol</label>
                             <input type="text" class="form-control text-center" id="editHabitIcon" maxlength="4">
                         </div>
                     </div>
@@ -261,6 +262,9 @@
                                 <label class="btn btn-outline-secondary btn-sm rounded-pill" for="edit-freq-sun">Sun</label>
                             </div>
                         </div>
+                        <p id="editFrequencyLockedMessage" class="form-text text-muted mt-2 mb-0 d-none">
+                            Scheduled days cannot be changed after a habit has logs. Create a new habit to use a different schedule.
+                        </p>
                     </div>
 
                     <div class="mb-3">
@@ -283,9 +287,10 @@
 <script>
     // Extract habit ID directly from URL path (/habit/<id>)
     const habitId = parseInt(window.location.pathname.split('/').filter(Boolean).pop());
+    let habitActionPending = false;
 
-    let habitCompletionChartInstance = null;
-    let habitTrendChartInstance = null;
+    window.habitCompletionChartInstance = null;
+    window.habitTrendChartInstance = null;
 
     async function loadHabitDetailView() {
         checkAuth();
@@ -309,13 +314,33 @@
 
         // Update Header
         document.getElementById('habitTitle').textContent = habit.title;
-        document.getElementById('habitIcon').textContent = habit.icon;
+        document.getElementById('habitIcon').innerHTML = getHabitVectorIconHtml(habit);
         document.getElementById('habitCategory').textContent = habit.category.toUpperCase();
+
+        const isScheduledToday = habit.active && habit.is_scheduled_today;
+        const todayStatus = habit.today_status;
+        const completeButton = document.getElementById('btnCompleteToday');
+        const skipButton = document.getElementById('btnSkipToday');
+        const missButton = document.getElementById('btnMissToday');
+        const actionStatus = document.getElementById('todayActionStatus');
+        const showComplete = isScheduledToday && todayStatus !== 'completed';
+        const showSkip = isScheduledToday && todayStatus !== 'completed' && todayStatus !== 'skipped';
+        const showMiss = isScheduledToday && !todayStatus;
+        [[completeButton, showComplete], [skipButton, showSkip], [missButton, showMiss]].forEach(([button, visible]) => {
+            button.hidden = !visible;
+            button.classList.toggle('d-none', !visible);
+        });
+        if (!habit.active) actionStatus.textContent = 'This habit is archived.';
+        else if (!isScheduledToday) actionStatus.textContent = 'Rest day — this habit is not scheduled today.';
+        else if (todayStatus === 'completed') actionStatus.textContent = 'Completed today.';
+        else if (todayStatus === 'skipped') actionStatus.textContent = 'Skipped today. You can still mark it complete.';
+        else if (todayStatus === 'missed') actionStatus.textContent = 'Marked missed. You can still complete it or correct it to skipped.';
+        else actionStatus.textContent = '';
 
         // Render Scheduled Frequency Badges
         const freqContainer = document.getElementById('habitSchedule');
         freqContainer.innerHTML = (habit.frequency || []).map(day => 
-            `<span class="badge bg-light text-dark border rounded-pill text-capitalize">${day.substring(0, 3)}</span>`
+            `<span class="badge bg-light text-secondary border rounded-pill text-capitalize">${day.substring(0, 3)}</span>`
         ).join('');
 
         // Update Stat Cards
@@ -326,13 +351,22 @@
 
         // Update Progress Bars
         document.getElementById('consistency7d').textContent = stats.consistency_score_7d + '%';
-        document.getElementById('progress7d').style.width = stats.consistency_score_7d + '%';
+        const progress7d = document.getElementById('progress7d');
+        progress7d.style.width = stats.consistency_score_7d + '%';
+        progress7d.setAttribute('aria-valuenow', stats.consistency_score_7d);
+        progress7d.setAttribute('aria-valuetext', stats.consistency_score_7d + '%');
 
         document.getElementById('consistency30d').textContent = stats.consistency_score_30d + '%';
-        document.getElementById('progress30d').style.width = stats.consistency_score_30d + '%';
+        const progress30d = document.getElementById('progress30d');
+        progress30d.style.width = stats.consistency_score_30d + '%';
+        progress30d.setAttribute('aria-valuenow', stats.consistency_score_30d);
+        progress30d.setAttribute('aria-valuetext', stats.consistency_score_30d + '%');
 
         document.getElementById('completionRate').textContent = stats.completion_rate_30d + '%';
-        document.getElementById('progressRate').style.width = stats.completion_rate_30d + '%';
+        const progressRate = document.getElementById('progressRate');
+        progressRate.style.width = stats.completion_rate_30d + '%';
+        progressRate.setAttribute('aria-valuenow', stats.completion_rate_30d);
+        progressRate.setAttribute('aria-valuetext', stats.completion_rate_30d + '%');
 
         // Render Status Breakdown Doughnut Chart
         renderStatusDoughnut(history);
@@ -350,7 +384,7 @@
         if (document.getElementById('editHabitTitle')) {
             document.getElementById('editHabitTitle').value = habit.title || '';
             document.getElementById('editHabitCategory').value = habit.category || 'general';
-            document.getElementById('editHabitIcon').value = habit.icon || '🎯';
+            document.getElementById('editHabitIcon').value = habit.icon || '';
             document.getElementById('editHabitReminderTime').value = habit.reminder_time ? habit.reminder_time.substring(0, 5) : '';
 
             const dayKeys = [
@@ -364,12 +398,16 @@
             ];
 
             const currentFreqs = Array.isArray(habit.frequency) ? habit.frequency.map(d => String(d).toLowerCase()) : [];
+            const canEditFrequency = habit.frequency_editable !== false;
             dayKeys.forEach(dk => {
                 const el = document.getElementById(dk.id);
                 if (el) {
                     el.checked = currentFreqs.includes(dk.name);
+                    el.disabled = !canEditFrequency;
                 }
             });
+            const frequencyLockedMessage = document.getElementById('editFrequencyLockedMessage');
+            if (frequencyLockedMessage) frequencyLockedMessage.classList.toggle('d-none', canEditFrequency);
         }
     }
 
@@ -377,7 +415,7 @@
         const completed = history.filter(h => h.status === 'completed').length;
         const skipped = history.filter(h => h.status === 'skipped').length;
         const missed = history.filter(h => h.status === 'missed').length;
-        const unlogged = history.filter(h => !['completed', 'skipped', 'missed'].includes(h.status)).length;
+        const unlogged = history.filter(h => h.is_scheduled && h.status === 'none').length;
 
         const ctx = document.getElementById('completionChart');
         if (!ctx) return;
@@ -386,13 +424,16 @@
             habitCompletionChartInstance.destroy();
         }
 
+        const isDark = document.body.classList.contains('dark-mode');
+        const textColor = isDark ? '#cbd5e1' : '#334155';
+
         habitCompletionChartInstance = new Chart(ctx, {
             type: 'doughnut',
             data: {
-                labels: ['Completed', 'Skipped', 'Missed', 'None'],
+                labels: ['Completed', 'Skipped', 'Missed', 'Unlogged'],
                 datasets: [{
                     data: [completed, skipped, missed, unlogged],
-                    backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#e5e7eb'],
+                    backgroundColor: ['#10b981', '#f59e0b', '#ef4444', isDark ? '#334155' : '#cbd5e1'],
                     borderRadius: 4
                 }]
             },
@@ -400,7 +441,10 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { position: 'bottom' }
+                    legend: {
+                        position: 'bottom',
+                        labels: { color: textColor, font: { weight: '600' } }
+                    }
                 }
             }
         });
@@ -414,6 +458,10 @@
             habitTrendChartInstance.destroy();
         }
 
+        const isDark = document.body.classList.contains('dark-mode');
+        const textColor = isDark ? '#cbd5e1' : '#334155';
+        const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)';
+
         habitTrendChartInstance = new Chart(ctx, {
             type: 'line',
             data: {
@@ -421,8 +469,8 @@
                 datasets: [{
                     label: 'Completions',
                     data: monthlyTrend.map(m => m.completions),
-                    borderColor: '#667eea',
-                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    borderColor: '#0ea5e9',
+                    backgroundColor: 'rgba(14, 165, 233, 0.12)',
                     fill: true,
                     tension: 0.3,
                     pointRadius: 4,
@@ -436,9 +484,14 @@
                     legend: { display: false }
                 },
                 scales: {
+                    x: {
+                        grid: { color: gridColor },
+                        ticks: { color: textColor, font: { weight: '500' } }
+                    },
                     y: {
                         beginAtZero: true,
-                        ticks: { precision: 0 }
+                        grid: { color: gridColor },
+                        ticks: { precision: 0, color: textColor, font: { weight: '500' } }
                     }
                 }
             }
@@ -502,7 +555,7 @@
                     <span class="fw-semibold">${d.day}</span>
                 </div>
                 <div class="d-flex align-items-center gap-2">
-                    <span class="badge bg-light text-dark border">${d.completed} completed</span>
+                    <span class="badge bg-light text-secondary border">${d.completed} completed</span>
                     <span class="badge bg-success-subtle text-success">${d.rate}% rate</span>
                 </div>
             </div>
@@ -510,18 +563,28 @@
     }
 
     async function logHabitAction(action) {
-        let endpoint = `/api/habits/${habitId}/${action}`;
-        const res = await apiCall(endpoint, 'POST');
-        if (res) {
+        if (habitActionPending || !['complete', 'skip', 'miss'].includes(action)) return;
+        habitActionPending = true;
+        const actionButtons = ['btnCompleteToday', 'btnSkipToday', 'btnMissToday', 'btnEditHabit', 'btnDeleteHabit']
+            .map(id => document.getElementById(id)).filter(Boolean);
+        actionButtons.forEach(button => { button.disabled = true; });
+        try {
+            const dateStr = getCurrentAppDateString();
+            const res = await apiCall(`/api/habits/${habitId}/${action}`, 'POST', { date: dateStr });
+            if (!res) return;
             if (action === 'complete') {
                 confetti({ particleCount: 70, spread: 60, origin: { y: 0.7 } });
-                showToast(`Habit completed! +${res.xp_earned} XP 🎉`, 'success');
+                showToast(`Habit completed! +${res.xp_earned} XP`, 'success');
             } else if (action === 'skip') {
-                showToast('Habit excused for today. Streak preserved!', 'info');
+                showToast(`Habit excused for today. +${res.xp_earned || 0} XP earned. Streak preserved!`, 'info');
             } else if (action === 'miss') {
                 showToast('Marked as missed. Rebuild momentum tomorrow!', 'warning');
             }
+            if (action === 'complete' || action === 'skip') await loadUserStats();
             await loadHabitDetailView();
+        } finally {
+            habitActionPending = false;
+            actionButtons.forEach(button => { button.disabled = false; });
         }
     }
 
@@ -542,7 +605,7 @@
         }
 
         const category = document.getElementById('editHabitCategory').value;
-        const icon = (document.getElementById('editHabitIcon').value || '🎯').trim();
+        const icon = (document.getElementById('editHabitIcon').value || '').trim();
         const reminderTimeVal = document.getElementById('editHabitReminderTime').value;
 
         const dayKeys = [
@@ -580,8 +643,8 @@
         if (res && res.habit) {
             showToast('Habit updated successfully!', 'success');
             const modalEl = document.getElementById('editHabitModal');
-            if (modalEl) {
-                const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+            if (modalEl && typeof bootstrap !== 'undefined') {
+                const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
                 modal.hide();
             }
             await loadHabitDetailView();

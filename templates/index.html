@@ -3,153 +3,125 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Habit Tracker - Build Better Habits</title>
+    <meta name="description" content="HabitFlow helps you track routines, reflect on your mood, and see your consistency grow over time.">
+    <meta name="theme-color" content="#070c14">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='48' fill='%230284c7'/><path d='M30 52 L44 66 L72 36' stroke='%23ffffff' stroke-width='10' stroke-linecap='round' stroke-linejoin='round' fill='none'/></svg>">
+    <title>HabitFlow — Build a routine that fits your life</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/style.css">
-    <style>
-        .hero-section {
-            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
-            background-size: 400% 400%;
-            animation: gradient 15s ease infinite;
-            position: relative;
-            overflow: hidden;
-            color: white;
-            padding-top: 120px !important;
-        }
-        @keyframes gradient {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
-        .animated-card {
-            animation: float 6s ease-in-out infinite;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 2rem;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-            color: #333;
-        }
-        @keyframes float {
-            0% { transform: translateY(0px); }
-            50% { transform: translateY(-20px); }
-            100% { transform: translateY(0px); }
-        }
-        .feature-card {
-            transition: all 0.3s ease;
-            border: none;
-            background: white;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            height: 100%;
-            padding: 2rem;
-            border-radius: 1rem;
-        }
-        .feature-card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 20px 25px rgba(0,0,0,0.1);
-        }
-        .feature-icon {
-            font-size: 2.5rem;
-            margin-bottom: 1rem;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .navbar {
-            backdrop-filter: blur(10px);
-            background-color: rgba(0, 0, 0, 0.2) !important;
-            transition: all 0.3s ease;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        .navbar.scrolled {
-            background-color: rgba(33, 37, 41, 0.95) !important;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-        .work-step {
-            position: relative;
-            padding: 2rem;
-            text-align: center;
-        }
-        .step-number {
-            width: 60px;
-            height: 60px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            font-weight: bold;
-            margin: 0 auto 1.5rem;
-            box-shadow: 0 10px 15px -3px rgba(102, 126, 234, 0.4);
-        }
-        .testimonial-card {
-            background: white;
-            padding: 2rem;
-            border-radius: 1rem;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            height: 100%;
-            transition: transform 0.3s;
-        }
-        .testimonial-card:hover {
-            transform: translateY(-5px);
-        }
-    </style>
+    <link rel="stylesheet" href="/static/css/landing.css">
 </head>
 <body>
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
         <div class="container">
-            <a class="navbar-brand fw-bold" href="#">
-                <i class="fas fa-rocket"></i> HabitFlow
+            <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="#">
+                <i class="fas fa-layer-group text-primary fs-4"></i>
+                <span class="brand-text fs-4">HabitFlow</span>
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill small px-2 py-0 ms-1 fw-bold" style="font-size: 0.72rem;">v3.0.3</span>
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <div class="ms-auto" id="landingNavActions">
-                    <a class="btn btn-outline-light me-2" href="/login">Login</a>
-                    <a class="btn btn-light" href="/register">Get Started</a>
+                <div class="ms-auto d-flex align-items-center gap-2" id="landingNavActions">
+                    <a class="btn btn-outline-light px-4 rounded-pill fw-semibold" href="/login">Login</a>
+                    <a class="btn btn-primary px-4 rounded-pill fw-bold" href="/register">Get Started Free</a>
                 </div>
             </div>
         </div>
     </nav>
 
     <!-- Hero Section -->
-    <section class="hero-section py-5">
+    <section class="hero-section">
         <div class="container">
-            <div class="row align-items-center">
-                <div class="col-lg-6 mb-4 mb-lg-0" data-aos="fade-right">
-                    <h1 class="display-4 fw-bold mb-4">Build Better Habits, One Day at a Time</h1>
-                    <p class="lead mb-4 text-white-50">
-                        Turn consistency into a superpower. Track your habits, build streaks, and unlock achievements as you level up your life.
+            <div class="row align-items-center gy-5">
+                <div class="col-lg-6" data-aos="fade-right">
+                    <div class="d-inline-flex align-items-center gap-2 mb-3">
+                        <span class="badge bg-primary px-3 py-2 rounded-pill fw-bold">v3.0.3</span>
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill fw-bold">
+                            <i class="fas fa-brain me-1"></i> Habit Tracking &amp; Coaching
+                        </span>
+                    </div>
+                    <h1 class="display-4 fw-bold mb-4 text-white">
+                        Build Better Habits, <br>
+                        <span style="background: linear-gradient(135deg, #38bdf8 0%, #2dd4bf 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">One Day at a Time</span>
+                    </h1>
+                    <p class="lead mb-4 fw-medium" style="color: #cbd5e1 !important; font-size: 1.25rem; line-height: 1.7;">
+                        Keep your routines visible, notice patterns in your week, and build momentum one small action at a time.
                     </p>
-                    <div class="d-flex gap-3" id="heroCtaContainer">
-                        <a href="/register" id="heroStartBtn" class="btn btn-lg btn-light fw-bold text-primary">Start Free</a>
-                        <a href="#features" class="btn btn-lg btn-outline-light">Learn More</a>
+                    <div class="d-flex flex-wrap gap-3" id="heroCtaContainer">
+                        <a href="/register" id="heroStartBtn" class="btn btn-lg btn-primary fw-bold px-4 py-3 rounded-pill shadow-lg">
+                            <i class="fas fa-bolt me-2"></i> Start Free Today
+                        </a>
+                        <a href="#features" class="btn btn-lg btn-outline-light fw-semibold px-4 py-3 rounded-pill">
+                            <i class="fas fa-compass me-2"></i> Explore Features
+                        </a>
                     </div>
                 </div>
                 <div class="col-lg-6" data-aos="fade-left">
                     <div class="hero-image">
+                        <div class="hero-orbit-line" aria-hidden="true"></div>
+                        <div class="hero-orb" aria-hidden="true"></div>
+                        <div class="hero-float-chip hero-float-chip-top"><i class="fas fa-sparkles" aria-hidden="true"></i><span>Small steps, steady progress</span></div>
                         <div class="animated-card">
-                            <div class="card-content">
-                                <div class="stat-item">
-                                    <span class="stat-number">42</span>
-                                    <span class="stat-label">Day Streak</span>
+                            <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-light-subtle">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="p-2 rounded-3 bg-primary text-white shadow-sm">
+                                        <i class="fas fa-chart-pie"></i>
+                                    </div>
+                                    <div><span class="fw-bold text-dark fs-5 d-block">Your consistency</span><span class="hero-preview-label">SAMPLE DASHBOARD PREVIEW</span></div>
                                 </div>
-                                <div class="stat-item">
-                                    <span class="stat-number">5</span>
-                                    <span class="stat-label">Active Habits</span>
+                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 fw-bold">
+                                    <i class="fas fa-eye me-1"></i> Example
+                                </span>
+                            </div>
+                            <div class="d-flex flex-column gap-2 mb-3">
+                                <div class="hero-stat-card">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="p-2 rounded-3 text-warning bg-warning-subtle fs-4">
+                                            <i class="fas fa-fire"></i>
+                                        </div>
+                                        <div>
+                                            <div class="text-secondary small fw-bold text-uppercase">Current Streak</div>
+                                            <div class="fw-bold text-dark fs-5">Unbroken Consistency</div>
+                                        </div>
+                                    </div>
+                                    <span class="fw-bold text-primary fs-3">12 Days</span>
                                 </div>
-                                <div class="stat-item">
-                                    <span class="stat-number">1,250</span>
-                                    <span class="stat-label">XP Points</span>
+                                <div class="hero-stat-card">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="p-2 rounded-3 text-info bg-info-subtle fs-4">
+                                            <i class="fas fa-calendar-check"></i>
+                                        </div>
+                                        <div>
+                                            <div class="text-secondary small fw-bold text-uppercase">Active Habits</div>
+                                            <div class="fw-bold text-dark fs-5">Daily Routines</div>
+                                        </div>
+                                    </div>
+                                    <span class="fw-bold text-success fs-3">3 Habits</span>
+                                </div>
+                                <div class="hero-stat-card">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="p-2 rounded-3 text-primary bg-primary-subtle fs-4">
+                                            <i class="fas fa-trophy"></i>
+                                        </div>
+                                        <div>
+                                            <div class="text-secondary small fw-bold text-uppercase">Gamified Rank</div>
+                                            <div class="fw-bold text-dark fs-5">Level 4</div>
+                                        </div>
+                                    </div>
+                                    <span class="fw-bold text-warning fs-3">320 XP</span>
                                 </div>
                             </div>
+                            <div class="p-3 rounded-4 bg-light border border-light-subtle d-flex align-items-center justify-content-between">
+                                <span class="small fw-semibold text-secondary">30-day completion: <strong class="text-dark">78%</strong></span>
+                                <span class="badge bg-secondary px-3 py-1 rounded-pill fw-bold">Sample data</span>
+                            </div>
                         </div>
+                        <div class="hero-float-chip hero-float-chip-bottom"><i class="fas fa-layer-group" aria-hidden="true"></i><span>Progress is built day by day</span></div>
                     </div>
                 </div>
             </div>
@@ -158,123 +130,143 @@
 
     <!-- Features Section -->
     <section id="features" class="features-section py-5 bg-light">
-        <div class="container">
-            <h2 class="text-center mb-5" data-aos="fade-up">Everything You Need to Succeed</h2>
+        <div class="container py-4">
+            <div class="text-center max-w-700 mx-auto mb-5">
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill fw-bold mb-2">
+                    Core Capabilities
+                </span>
+                <h2 class="display-6 fw-bold mb-3 text-dark">Tools to Keep Your Routines in View</h2>
+                <p class="text-secondary fs-5 mb-0 fw-medium">
+                    Track scheduled habits, review your activity, and reflect on your mood over time.
+                </p>
+            </div>
             <div class="row g-4">
                 <div class="col-md-6 col-lg-3" data-aos="fade-up" data-aos-delay="100">
                     <div class="feature-card">
-                        <div class="feature-icon">🔥</div>
-                        <h5>Streak Tracking</h5>
-                        <p>Watch your streaks grow and celebrate consistency.</p>
+                        <div class="feature-icon-wrapper"><i class="fas fa-fire"></i></div>
+                        <h5 class="fw-bold text-dark mb-2">Schedule-Aware Streaks</h5>
+                        <p class="text-secondary small mb-0 fw-medium">Schedule-aware streaks account for daily, weekday, and custom routines.</p>
                     </div>
                 </div>
                 <div class="col-md-6 col-lg-3" data-aos="fade-up" data-aos-delay="200">
                     <div class="feature-card">
-                        <div class="feature-icon">📊</div>
-                        <h5>Analytics</h5>
-                        <p>Deep insights into your habits and patterns.</p>
+                        <div class="feature-icon-wrapper"><i class="fas fa-chart-line"></i></div>
+                        <h5 class="fw-bold text-dark mb-2">Activity at a Glance</h5>
+                        <p class="text-secondary small mb-0 fw-medium">Multi-metric charts, completion distributions, and 30-day visual activity calendar heatmaps.</p>
                     </div>
                 </div>
                 <div class="col-md-6 col-lg-3" data-aos="fade-up" data-aos-delay="300">
                     <div class="feature-card">
-                        <div class="feature-icon">🎮</div>
-                        <h5>Gamification</h5>
-                        <p>Earn XP, unlock badges, and climb the leaderboard.</p>
+                        <div class="feature-icon-wrapper"><i class="fas fa-trophy"></i></div>
+                        <h5 class="fw-bold text-dark mb-2">Gamified Level Progression</h5>
+                        <p class="text-secondary small mb-0 fw-medium">Earn deterministic XP, trigger level-up celebrations, and unlock tiered achievement badges.</p>
                     </div>
                 </div>
                 <div class="col-md-6 col-lg-3" data-aos="fade-up" data-aos-delay="400">
                     <div class="feature-card">
-                        <div class="feature-icon">😊</div>
-                        <h5>Mood Tracking</h5>
-                        <p>Connect your habits with emotional wellbeing.</p>
+                        <div class="feature-icon-wrapper"><i class="fas fa-smile"></i></div>
+                        <h5 class="fw-bold text-dark mb-2">Mood &amp; Habit Patterns</h5>
+                        <p class="text-secondary small mb-0 fw-medium">Compare mood check-ins with habit history as personal patterns, without assuming one causes the other.</p>
                     </div>
                 </div>
                 <div class="col-md-6 col-lg-3" data-aos="fade-up" data-aos-delay="500">
                     <div class="feature-card">
-                        <div class="feature-icon">🤖</div>
-                        <h5>Smart Coach</h5>
-                        <p>Get personalized insights and encouragement.</p>
+                        <div class="feature-icon-wrapper"><i class="fas fa-brain"></i></div>
+                        <h5 class="fw-bold text-dark mb-2">Adaptive Behavioral Coach</h5>
+                        <p class="text-secondary small mb-0 fw-medium">Rule-based coaching turns your logged activity into practical prompts and reminders.</p>
                     </div>
                 </div>
                 <div class="col-md-6 col-lg-3" data-aos="fade-up" data-aos-delay="600">
                     <div class="feature-card">
-                        <div class="feature-icon">📱</div>
-                        <h5>Mobile Ready</h5>
-                        <p>Track habits on the go, anywhere, anytime.</p>
+                        <div class="feature-icon-wrapper"><i class="fas fa-mobile-alt"></i></div>
+                        <h5 class="fw-bold text-dark mb-2">Fully Responsive UI</h5>
+                        <p class="text-secondary small mb-0 fw-medium">Engineered with responsive web standards, tactile 3D hover physics, and instant live filtering.</p>
                     </div>
                 </div>
                 <div class="col-md-6 col-lg-3" data-aos="fade-up" data-aos-delay="700">
                     <div class="feature-card">
-                        <div class="feature-icon">🎯</div>
-                        <h5>Goal Setting</h5>
-                        <p>Set frequency and reminders for each habit.</p>
+                        <div class="feature-icon-wrapper"><i class="fas fa-bullseye"></i></div>
+                        <h5 class="fw-bold text-dark mb-2">Goal-Based Suggestions</h5>
+                        <p class="text-secondary small mb-0 fw-medium">Share a goal to get practical micro-habit ideas you can adapt to your routine.</p>
                     </div>
                 </div>
                 <div class="col-md-6 col-lg-3" data-aos="fade-up" data-aos-delay="800">
                     <div class="feature-card">
-                        <div class="feature-icon">✨</div>
-                        <h5>Polished UI</h5>
-                        <p>Beautiful, smooth, and intuitive interface.</p>
+                        <div class="feature-icon-wrapper"><i class="fas fa-shield-alt"></i></div>
+                        <h5 class="fw-bold text-dark mb-2">Account Protection</h5>
+                        <p class="text-secondary small mb-0 fw-medium">Password hashing, signed login tokens, input validation, and safer handling of user content.</p>
                     </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- How It Works -->
+    <!-- How It Works Section -->
     <section class="how-it-works py-5">
-        <div class="container">
-            <h2 class="text-center mb-5" data-aos="fade-up">How It Works</h2>
+        <div class="container py-4">
+            <div class="text-center mb-5">
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill fw-bold mb-2">
+                    Simple 3-Step Routine
+                </span>
+                <h2 class="display-6 fw-bold mb-2 text-dark">How HabitFlow Works</h2>
+                <p class="text-secondary fs-5 fw-medium">Simple daily steps that compound into monumental personal transformation.</p>
+            </div>
             <div class="row g-4">
                 <div class="col-md-4" data-aos="fade-up" data-aos-delay="100">
                     <div class="work-step">
                         <div class="step-number">1</div>
-                        <h5>Create Habits</h5>
-                        <p>Add the habits you want to build or improve.</p>
+                        <h4 class="fw-bold text-dark mb-2">Define Your Habits</h4>
+                        <p class="text-secondary fw-medium mb-0">Select custom frequencies, set optional reminder times, and organize habits by wellness categories.</p>
                     </div>
                 </div>
                 <div class="col-md-4" data-aos="fade-up" data-aos-delay="200">
                     <div class="work-step">
                         <div class="step-number">2</div>
-                        <h5>Log Daily</h5>
-                        <p>Complete, skip, or mark habits done each day.</p>
+                        <h4 class="fw-bold text-dark mb-2">Log Daily Actions</h4>
+                        <p class="text-secondary fw-medium mb-0">One-click completion logs, flexible skip excuses that protect streaks, and daily emotional reflections.</p>
                     </div>
                 </div>
                 <div class="col-md-4" data-aos="fade-up" data-aos-delay="300">
                     <div class="work-step">
                         <div class="step-number">3</div>
-                        <h5>Build Streaks</h5>
-                        <p>Watch your consistency grow and level up!</p>
+                        <h4 class="fw-bold text-dark mb-2">Level Up &amp; Master</h4>
+                        <p class="text-secondary fw-medium mb-0">Accumulate XP points, unlock milestone badges, and receive custom coaching insights every morning.</p>
                     </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Testimonials -->
+    <!-- Product Principles -->
     <section class="testimonials-section py-5 bg-light">
-        <div class="container">
-            <h2 class="text-center mb-5" data-aos="fade-up">What Users Say</h2>
+        <div class="container py-4">
+            <div class="text-center mb-5">
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill fw-bold mb-2">
+                    Product Principles
+                </span>
+                <h2 class="display-6 fw-bold mb-2 text-dark">A calmer way to build consistency</h2>
+                <p class="text-secondary fs-5 fw-medium">Useful feedback for your own routines, without rankings or pressure.</p>
+            </div>
             <div class="row g-4">
                 <div class="col-md-4" data-aos="fade-up" data-aos-delay="100">
                     <div class="testimonial-card">
-                        <div class="stars">⭐⭐⭐⭐⭐</div>
-                        <p class="quote">"This app changed how I think about consistency. Building a 100-day streak is genuinely motivating!"</p>
-                        <p class="author">— Sarah</p>
+                        <div class="feature-icon-wrapper mb-4"><i class="fas fa-calendar-check"></i></div>
+                        <h5 class="fw-bold text-dark mb-2">Make room for real life</h5>
+                        <p class="text-secondary fw-medium mb-0">Choose the days that fit your routine. Rest days stay outside the schedule.</p>
                     </div>
                 </div>
                 <div class="col-md-4" data-aos="fade-up" data-aos-delay="200">
                     <div class="testimonial-card">
-                        <div class="stars">⭐⭐⭐⭐⭐</div>
-                        <p class="quote">"The insights about my mood and habits are eye-opening. Finally understand what makes me happy."</p>
-                        <p class="author">— Mike</p>
+                        <div class="feature-icon-wrapper mb-4"><i class="fas fa-chart-line"></i></div>
+                        <h5 class="fw-bold text-dark mb-2">See patterns, not judgments</h5>
+                        <p class="text-secondary fw-medium mb-0">Review your history and mood check-ins as personal observations, not causal claims.</p>
                     </div>
                 </div>
                 <div class="col-md-4" data-aos="fade-up" data-aos-delay="300">
                     <div class="testimonial-card">
-                        <div class="stars">⭐⭐⭐⭐⭐</div>
-                        <p class="quote">"Gamification makes it fun! The XP and badges keep me coming back every single day."</p>
-                        <p class="author">— Alex</p>
+                        <div class="feature-icon-wrapper mb-4"><i class="fas fa-seedling"></i></div>
+                        <h5 class="fw-bold text-dark mb-2">Start small and keep going</h5>
+                        <p class="text-secondary fw-medium mb-0">A clear daily check-in helps you notice progress and pick up again after a missed day.</p>
                     </div>
                 </div>
             </div>
@@ -282,51 +274,164 @@
     </section>
 
     <!-- CTA Section -->
-    <section class="cta-section py-5" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-        <div class="container text-center text-white" data-aos="zoom-in">
-            <h2 class="mb-4">Ready to Transform Your Life?</h2>
-            <p class="lead mb-4">Join thousands building better habits, one day at a time.</p>
-            <a href="/register" class="btn btn-light btn-lg px-5">Get Started Free</a>
+    <section class="cta-section py-5 position-relative overflow-hidden" style="background: radial-gradient(circle at 20% 50%, rgba(56, 189, 248, 0.35) 0%, transparent 50%), linear-gradient(135deg, #0284c7 0%, #0f766e 100%); box-shadow: inset 0 3px 6px rgba(0,0,0,0.25), inset 0 -3px 6px rgba(0,0,0,0.25);">
+        <div class="container text-center text-white py-4" data-aos="zoom-in">
+            <h2 class="display-6 fw-bold mb-3">Ready to Transform Your Consistency?</h2>
+            <p class="lead mb-4 fw-medium text-light" style="max-width: 650px; margin: 0 auto; line-height: 1.7;">
+                Start with one habit. Build the next one when you're ready.
+            </p>
+            <a href="/register" class="btn btn-light btn-lg px-5 py-3 fw-bold shadow-lg rounded-pill text-primary" style="box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;">
+                <i class="fas fa-arrow-right me-2"></i> Get Started Free Today
+            </a>
         </div>
     </section>
 
-    <!-- Footer -->
-    <footer class="bg-dark text-white py-4">
+    <!-- High-Contrast Accessible Footer -->
+    <footer class="footer bg-dark text-white py-5 border-top border-dark-subtle" style="background-color: #070c14 !important; border-top: 1px solid #1e293b !important;">
         <div class="container">
-            <div class="row">
-                <div class="col-md-4">
-                    <h6>HabitFlow</h6>
-                    <p class="text-muted">Building better habits, one day at a time.</p>
+            <div class="row gy-4 mb-4">
+                <div class="col-lg-4 col-md-6">
+                    <h5 class="footer-heading d-flex align-items-center gap-2">
+                        <i class="fas fa-layer-group text-primary"></i> HabitFlow
+                    </h5>
+                    <p class="footer-text mb-3" style="color: #cbd5e1 !important; font-size: 0.95rem; line-height: 1.7;">
+                        Build a routine that fits your life. Track habits, reflect on your mood, and see your progress over time.
+                    </p>
+                    <div class="d-flex align-items-center gap-2 text-secondary small fw-semibold">
+                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1">
+                            <i class="fas fa-check-circle me-1"></i> Habits · Mood · Insights
+                        </span>
+                    </div>
                 </div>
-                <div class="col-md-4">
-                    <h6>Links</h6>
-                    <ul class="list-unstyled text-muted">
-                        <li><a href="#" class="text-muted text-decoration-none">About</a></li>
-                        <li><a href="#" class="text-muted text-decoration-none">Privacy</a></li>
-                        <li><a href="#" class="text-muted text-decoration-none">Terms</a></li>
+                <div class="col-lg-2 col-md-3 col-6">
+                    <h6 class="footer-heading">Navigation</h6>
+                    <ul class="list-unstyled d-flex flex-column gap-2 mb-0">
+                        <li><a href="/dashboard" class="footer-nav-link"><i class="fas fa-chart-line me-2 text-primary"></i> Dashboard</a></li>
+                        <li><a href="/login" class="footer-nav-link"><i class="fas fa-sign-in-alt me-2 text-primary"></i> Account Login</a></li>
+                        <li><a href="/register" class="footer-nav-link"><i class="fas fa-user-plus me-2 text-primary"></i> Sign Up Free</a></li>
+                        <li><a href="#features" class="footer-nav-link"><i class="fas fa-star me-2 text-primary"></i> Features</a></li>
                     </ul>
                 </div>
-                <div class="col-md-4">
-                    <h6>Follow Us</h6>
-                    <div class="d-flex gap-3">
-                        <a href="#" class="text-muted text-decoration-none"><i class="fab fa-twitter"></i></a>
-                        <a href="#" class="text-muted text-decoration-none"><i class="fab fa-github"></i></a>
-                        <a href="#" class="text-muted text-decoration-none"><i class="fab fa-linkedin"></i></a>
+                <div class="col-lg-2 col-md-3 col-6">
+                    <h6 class="footer-heading">Links</h6>
+                    <ul class="list-unstyled d-flex flex-column gap-2 mb-0">
+                        <li><a href="/about" class="footer-nav-link"><i class="fas fa-info-circle me-2 text-primary"></i> About</a></li>
+                        <li><a href="/privacy" class="footer-nav-link"><i class="fas fa-user-shield me-2 text-primary"></i> Privacy</a></li>
+                        <li><a href="/terms" class="footer-nav-link"><i class="fas fa-file-contract me-2 text-primary"></i> Terms</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-4 col-md-12">
+                    <h6 class="footer-heading">Follow Us</h6>
+                    <p class="footer-text small mb-3" style="color: #cbd5e1 !important;">
+                        Connect with developer Arun Kumar across social platforms and share your progress.
+                    </p>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <a href="https://github.com/KerberoSec" target="_blank" rel="noopener" class="footer-social-btn" title="GitHub (@KerberoSec)"><i class="fab fa-github"></i></a>
+                        <a href="https://linkedin.com/in/arunkumar31072006" target="_blank" rel="noopener" class="footer-social-btn" title="LinkedIn (Arun Kumar)"><i class="fab fa-linkedin-in"></i></a>
+                        <a href="https://x.com/ArunKumar310706" target="_blank" rel="noopener" class="footer-social-btn" title="X / Twitter (@ArunKumar310706)"><i class="fab fa-x-twitter"></i></a>
+                        <a href="https://instagram.com/so_far_from_your_heart" target="_blank" rel="noopener" class="footer-social-btn" title="Instagram (@so_far_from_your_heart)"><i class="fab fa-instagram"></i></a>
                     </div>
                 </div>
             </div>
-            <hr class="bg-secondary">
-            <p class="text-center text-muted mb-0">&copy; 2024 HabitFlow. All rights reserved.</p>
+            <hr style="border-color: #1e293b !important; opacity: 1;" class="my-4">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-center text-secondary small gap-2">
+                <p class="mb-0 fw-semibold" style="color: #94a3b8 !important;">
+                    &copy; 2026 HabitFlow.
+                </p>
+                <div class="d-flex gap-3 small fw-semibold" style="color: #94a3b8 !important;">
+                    <a href="/privacy" class="footer-nav-link" style="color: #94a3b8 !important;">Privacy Policy</a>
+                    <span>•</span>
+                    <a href="/terms" class="footer-nav-link" style="color: #94a3b8 !important;">Terms of Service</a>
+                    <span>•</span>
+                    <a href="/about" class="footer-nav-link" style="color: #94a3b8 !important;">About HabitFlow</a>
+                </div>
+            </div>
         </div>
     </footer>
 
+    <!-- About Modal -->
+    <div class="modal fade" id="aboutModal" tabindex="-1" aria-labelledby="aboutModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem; overflow: hidden;">
+                <div class="modal-header bg-dark text-white border-bottom border-secondary-subtle px-4 py-3" style="background-color: #0b1320 !important;">
+                    <h5 class="modal-title fw-bold text-white d-flex align-items-center gap-2" id="aboutModalLabel">
+                        <i class="fas fa-info-circle text-primary"></i> About HabitFlow
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="mb-3">HabitFlow helps you define routines, record daily activity, and review simple patterns over time.</p>
+                    <p class="mb-3">It combines scheduling, progress summaries, mood check-ins, and rule-based coaching in one personal tracker.</p>
+                    <div class="p-3 rounded-3 bg-light-subtle border border-secondary-subtle small">
+                        <strong>Developer:</strong> Arun Kumar (<a href="https://github.com/KerberoSec" target="_blank" rel="noopener" class="text-primary fw-semibold">@KerberoSec</a>)<br>
+                        <strong>Version:</strong> 3.0.3
+                    </div>
+                </div>
+                <div class="modal-footer border-top border-secondary-subtle d-flex justify-content-between">
+                    <a href="/about" class="btn btn-outline-info btn-sm px-3 rounded-pill"><i class="fas fa-external-link-alt me-1"></i> Full About Page</a>
+                    <button type="button" class="btn btn-primary btn-sm px-3 rounded-pill" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Privacy Policy Modal -->
+    <div class="modal fade" id="privacyModal" tabindex="-1" aria-labelledby="privacyModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem; overflow: hidden;">
+                <div class="modal-header bg-dark text-white border-bottom border-secondary-subtle px-4 py-3" style="background-color: #0b1320 !important;">
+                    <h5 class="modal-title fw-bold text-white d-flex align-items-center gap-2" id="privacyModalLabel">
+                        <i class="fas fa-user-shield text-primary"></i> Privacy Policy
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="mb-3 fw-semibold">Your privacy and data sovereignty are fundamental priorities at HabitFlow.</p>
+                    <ul class="small d-flex flex-column gap-2 mb-3">
+                        <li><strong>Account data:</strong> HabitFlow stores account, habit, mood, and progress data to provide your tracking history.</li>
+                        <li><strong>Password protection:</strong> Passwords are stored as salted hashes and are never returned by the API.</li>
+                        <li><strong>Tracking:</strong> This application does not include third-party advertising pixels.</li>
+                    </ul>
+                    <p class="small text-muted mb-0">For privacy inquiries, contact the developer via GitHub <a href="https://github.com/KerberoSec" target="_blank" rel="noopener" class="text-primary fw-semibold">@KerberoSec</a>.</p>
+                </div>
+                <div class="modal-footer border-top border-secondary-subtle d-flex justify-content-between">
+                    <a href="/privacy" class="btn btn-outline-info btn-sm px-3 rounded-pill"><i class="fas fa-external-link-alt me-1"></i> Full Privacy Policy</a>
+                    <button type="button" class="btn btn-primary btn-sm px-3 rounded-pill" data-bs-dismiss="modal">Understood</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Terms of Service Modal -->
+    <div class="modal fade" id="termsModal" tabindex="-1" aria-labelledby="termsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem; overflow: hidden;">
+                <div class="modal-header bg-dark text-white border-bottom border-secondary-subtle px-4 py-3" style="background-color: #0b1320 !important;">
+                    <h5 class="modal-title fw-bold text-white d-flex align-items-center gap-2" id="termsModalLabel">
+                        <i class="fas fa-file-contract text-primary"></i> Terms of Service
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="mb-3">By accessing and using HabitFlow, you agree to track your habits in good faith and adhere to standard terms of fair use.</p>
+                    <p class="small text-muted mb-0">HabitFlow is a personal habit tracking application. &copy; 2026 HabitFlow.</p>
+                </div>
+                <div class="modal-footer border-top border-secondary-subtle d-flex justify-content-between">
+                    <a href="/terms" class="btn btn-outline-info btn-sm px-3 rounded-pill"><i class="fas fa-external-link-alt me-1"></i> Full Terms of Service</a>
+                    <button type="button" class="btn btn-primary btn-sm px-3 rounded-pill" data-bs-dismiss="modal">Accept</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
     <script>
-        AOS.init({
-            duration: 800,
-            once: true
-        });
+        if (window.AOS) {
+            AOS.init({ duration: 800, once: true });
+        } else {
+            document.querySelectorAll('[data-aos]').forEach(element => element.classList.add('aos-animate'));
+        }
 
         window.addEventListener('scroll', function() {
             if (window.scrollY > 50) {
@@ -343,7 +448,7 @@
                 const navActions = document.getElementById('landingNavActions');
                 if (navActions) {
                     navActions.innerHTML = `
-                        <a class="btn btn-primary rounded-pill px-3 fw-semibold shadow-sm" href="/dashboard">
+                        <a class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" href="/dashboard">
                             <i class="fas fa-chart-line me-1"></i> Go to Dashboard
                         </a>
                     `;
@@ -351,7 +456,7 @@
                 const heroBtn = document.getElementById('heroStartBtn');
                 if (heroBtn) {
                     heroBtn.href = '/dashboard';
-                    heroBtn.textContent = 'Go to Dashboard';
+                    heroBtn.innerHTML = '<i class="fas fa-chart-line me-2"></i> Go to Dashboard';
                 }
             }
         });

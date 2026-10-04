@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}Terms of Service - HabitFlow{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Header Section -->
+    <div class="text-center max-w-800 mx-auto mb-5">
+        <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill fw-bold mb-3">
+            <i class="fas fa-file-contract me-1"></i> User Agreement
+        </span>
+        <h1 class="display-5 fw-bold mb-2">Terms of Service</h1>
+        <p class="text-secondary small mb-0">Last Updated: October 4, 2026 · HabitFlow v3.0.3</p>
+    </div>
+
+    <!-- Main Terms Content Card -->
+    <div class="card border-0 shadow-sm rounded-4 p-4 p-lg-5 mb-5" style="background: var(--card-bg);">
+        <div class="d-flex flex-column gap-4">
+            <div>
+                <h4 class="fw-bold mb-2 text-primary">1. Acceptance of Terms</h4>
+                <p class="text-secondary small mb-0">
+                    By registering for an account, accessing, or utilizing the HabitFlow web application, you acknowledge that you have read,
+                    understood, and agreed to be bound by these Terms of Service and our Privacy Policy. If you do not agree with any part
+                    of these terms, please discontinue use of the platform immediately.
+                </p>
+            </div>
+
+            <hr class="border-secondary-subtle my-1">
+
+            <div>
+                <h4 class="fw-bold mb-2 text-primary">2. Account Registration & Security</h4>
+                <p class="text-secondary small mb-2">
+                    When registering for an account, you agree to:
+                </p>
+                <ul class="text-secondary small mb-0 d-flex flex-column gap-2">
+                    <li>Provide an accurate, functional email address and a secure password of at least 8 characters.</li>
+                    <li>Maintain the confidentiality of your authentication credentials and notify us immediately of any unauthorized account activity.</li>
+                    <li>Accept full responsibility for all activities, habit modifications, and status submissions performed under your account.</li>
+                </ul>
+            </div>
+
+            <hr class="border-secondary-subtle my-1">
+
+            <div>
+                <h4 class="fw-bold mb-2 text-primary">3. Acceptable Use Policy & Quotas</h4>
+                <p class="text-secondary small mb-2">
+                    HabitFlow is designed as a personal habit building utility. To preserve platform reliability and performance for all users:
+                </p>
+                <ul class="text-secondary small mb-0 d-flex flex-column gap-2">
+                    <li><strong>Habit Quota:</strong> Each account may maintain a maximum of 50 active habits simultaneously. Additional habits can be created by archiving or permanently removing unused habits.</li>
+                    <li><strong>Prohibited Activities:</strong> You may not attempt to reverse engineer, disrupt server integrity, bypass rate limiters, or execute automated bots or denial-of-service scripts against our endpoints.</li>
+                    <li><strong>Integrity:</strong> You agree not to attempt unauthorized access to other users' private habits, logs, or analytics.</li>
+                </ul>
+            </div>
+
+            <hr class="border-secondary-subtle my-1">
+
+            <div>
+                <h4 class="fw-bold mb-2 text-primary">4. Health & Medical Disclaimer</h4>
+                <div class="p-3 rounded-3 bg-warning-subtle border border-warning-subtle mb-2">
+                    <p class="small text-dark fw-medium mb-0">
+                        <i class="fas fa-exclamation-triangle text-warning me-1"></i>
+                        <strong>Important Notice:</strong> HabitFlow is a software productivity application and motivational tracking tool.
+                        None of the content, streak milestones, mood correlation summaries, or rule-based AI coaching messages constitute
+                        medical, psychiatric, psychological, or clinical therapeutic advice. Always seek the advice of a qualified healthcare professional
+                        for any medical or mental health conditions.
+                    </p>
+                </div>
+            </div>
+
+            <hr class="border-secondary-subtle my-1">
+
+            <div>
+                <h4 class="fw-bold mb-2 text-primary">5. Intellectual Property & License</h4>
+                <p class="text-secondary small mb-0">
+                    The HabitFlow platform, user interface designs, custom 3D card physics, and backend algorithms are authored by developer Arun Kumar.
+                    You retain full ownership and intellectual rights over the habit text, notes, and personal reflection data you submit to the application.
+                </p>
+            </div>
+
+            <hr class="border-secondary-subtle my-1">
+
+            <div>
+                <h4 class="fw-bold mb-2 text-primary">6. Service Availability & Modifications</h4>
+                <p class="text-secondary small mb-0">
+                    We continuously improve HabitFlow. We reserve the right to deploy updates, enhance algorithms, or modify feature sets.
+                    While we strive for high uptime and robust data persistence, the service is provided on an "as is" and "as available" basis
+                    without warranties of any kind.
+                </p>
+            </div>
+
+            <hr class="border-secondary-subtle my-1">
+
+            <div>
+                <h4 class="fw-bold mb-2 text-primary">7. Termination & Account Cancellation</h4>
+                <p class="text-secondary small mb-0">
+                    You may terminate your account and discontinue using the service at any time. We reserve the right to suspend or terminate accounts
+                    that violate these terms, engage in malicious automated traffic, or compromise the stability of the platform.
+                </p>
+            </div>
+
+            <hr class="border-secondary-subtle my-1">
+
+            <div>
+                <h4 class="fw-bold mb-2 text-primary">8. Questions & Contact</h4>
+                <p class="text-secondary small mb-0">
+                    If you have questions or require clarification regarding these Terms of Service, please reach out to the developer via
+                    <a href="https://github.com/KerberoSec" target="_blank" rel="noopener" class="text-primary fw-semibold">GitHub @KerberoSec</a>.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

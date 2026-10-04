@@ -8,10 +8,12 @@ This module aggregates analytics for dashboards and habit-specific deep dives:
 - GET /api/analytics/habit/<id>: Granular habit statistics, 12-month trend, best days, and calendar history.
 """
 
+from collections import defaultdict
 from datetime import date, timedelta
 from typing import List, Dict, Any
-from flask import Blueprint, request, jsonify
-from models import Habit, HabitLog, User, db
+from flask import Blueprint, jsonify
+from date_utils import current_date
+from models import Habit, HabitLog, User
 from routes.auth import token_required
 from services.streak_engine import StreakEngine
 from services.coach_engine import CoachEngine
@@ -22,11 +24,11 @@ analytics_bp = Blueprint('analytics', __name__, url_prefix='/api/analytics')
 def get_calendar_month_range(year: int, month: int) -> tuple[date, date]:
     """
     Returns the first and last calendar dates for a given year and month.
-    
+
     Args:
         year: Full year (e.g. 2026).
         month: Month index (1 to 12).
-        
+
     Returns:
         tuple of (month_start_date, month_end_date).
     """
@@ -38,60 +40,86 @@ def get_calendar_month_range(year: int, month: int) -> tuple[date, date]:
     return start_date, end_date
 
 
-def get_monthly_trend_data(user_id: int, habit_id: int = None) -> List[Dict[str, Any]]:
+def get_monthly_trend_data(user_id: int, habit_id: int = None,
+                           as_of: date = None) -> List[Dict[str, Any]]:
     """
     Calculates monthly completion totals and rates for the last 12 calendar months.
-    Optionally scoped to a specific habit.
-    
+    Uses a single batch query across the 12-month period to eliminate N+1 bottlenecks.
+
     Args:
         user_id: Identifier of the user.
         habit_id: Optional specific habit identifier.
-        
+
     Returns:
         list of dicts: Month label, completions, and completion rate for each of 12 months.
     """
-    today = date.today()
+    today = as_of or current_date()
     current_year = today.year
     current_month = today.month
 
-    months_data = []
+    # Calculate earliest month start date (12 months ago)
+    earliest_year = current_year
+    earliest_month = current_month - 11
+    while earliest_month <= 0:
+        earliest_month += 12
+        earliest_year -= 1
+    start_bound, _ = get_calendar_month_range(earliest_year, earliest_month)
 
+    if habit_id is not None:
+        habits = Habit.query.filter_by(id=habit_id, user_id=user_id).all()
+    else:
+        habits = Habit.query.filter_by(user_id=user_id).all()
+    habit_ids = [habit.id for habit in habits]
+    logs = HabitLog.query.filter(
+        HabitLog.user_id == user_id,
+        HabitLog.habit_id.in_(habit_ids),
+        HabitLog.date >= start_bound,
+        HabitLog.date <= today
+    ).all() if habit_ids else []
+    log_map = {(log.habit_id, log.date): log.status for log in logs}
+
+    # Use scheduled habit-days as the denominator so unlogged days count as
+    # missed instead of disappearing from the completion rate.
+    month_counts = defaultdict(lambda: {'completed': 0, 'scheduled': 0, 'logged': 0})
+    day = start_bound
+    while day <= today:
+        month_count = month_counts[(day.year, day.month)]
+        for habit in habits:
+            if habit.created_date and day < habit.created_date:
+                continue
+            if habit.archived_date and day > habit.archived_date:
+                continue
+            if not habit.is_scheduled_for_date(day):
+                continue
+            status = log_map.get((habit.id, day))
+            if day == today and status is None:
+                continue
+            month_count['scheduled'] += 1
+            if status is not None:
+                month_count['logged'] += 1
+            if status == 'completed':
+                month_count['completed'] += 1
+        day += timedelta(days=1)
+
+    months_data = []
     for offset in range(11, -1, -1):
         target_year = current_year
         target_month = current_month - offset
-
         while target_month <= 0:
             target_month += 12
             target_year -= 1
 
-        month_start, month_end = get_calendar_month_range(target_year, target_month)
-
-        # Base filter
-        query_completed = HabitLog.query.filter(
-            HabitLog.user_id == user_id,
-            HabitLog.status == 'completed',
-            HabitLog.date >= month_start,
-            HabitLog.date <= month_end
-        )
-        query_total = HabitLog.query.filter(
-            HabitLog.user_id == user_id,
-            HabitLog.date >= month_start,
-            HabitLog.date <= month_end
-        )
-
-        if habit_id is not None:
-            query_completed = query_completed.filter(HabitLog.habit_id == habit_id)
-            query_total = query_total.filter(HabitLog.habit_id == habit_id)
-
-        completions = query_completed.count()
-        total_logs = query_total.count()
-
-        rate = int((completions / total_logs) * 100) if total_logs > 0 else 0
+        month_start, _ = get_calendar_month_range(target_year, target_month)
+        key = (target_year, target_month)
+        counts = month_counts[key]
+        completions = counts['completed']
+        rate = int((completions / counts['scheduled']) * 100) if counts['scheduled'] else 0
 
         months_data.append({
             'month': month_start.strftime('%b %y'),
             'completions': completions,
-            'total_logs': total_logs,
+            'total_logs': counts['logged'],
+            'scheduled_days': counts['scheduled'],
             'rate': rate,
             'year': target_year,
             'month_num': target_month
@@ -100,43 +128,73 @@ def get_monthly_trend_data(user_id: int, habit_id: int = None) -> List[Dict[str,
     return months_data
 
 
-def get_weekly_completion_data(user_id: int, habit_id: int = None) -> List[Dict[str, Any]]:
+def get_weekly_completion_data(user_id: int, habit_id: int = None, days: int = 30,
+                               as_of: date = None) -> List[Dict[str, Any]]:
     """
     Calculates completion and skip metrics categorized by day of the week (Mon-Sun)
-    over the preceding 30 days.
-    
+    over the requested number of calendar days (30 by default).
+
     Args:
         user_id: Identifier of the user.
         habit_id: Optional specific habit identifier.
-        
+
     Returns:
         list of dicts: Weekday metrics with counts and percentage rates.
     """
-    start_date = date.today() - timedelta(days=30)
+    today = as_of or current_date()
+    start_date = today - timedelta(days=days - 1)
 
-    query = HabitLog.query.filter(
-        HabitLog.user_id == user_id,
-        HabitLog.date >= start_date
-    )
     if habit_id is not None:
-        query = query.filter(HabitLog.habit_id == habit_id)
-
-    logs = query.all()
+        habits = Habit.query.filter_by(id=habit_id, user_id=user_id).all()
+    else:
+        habits = Habit.query.filter_by(user_id=user_id).all()
+    habit_ids = [habit.id for habit in habits]
+    logs = HabitLog.query.filter(
+        HabitLog.user_id == user_id,
+        HabitLog.habit_id.in_(habit_ids),
+        HabitLog.date >= start_date,
+        HabitLog.date <= today
+    ).all() if habit_ids else []
+    log_map = {(log.habit_id, log.date): log.status for log in logs}
 
     day_names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    day_counts = {name: {'completed': 0, 'skipped': 0, 'missed': 0} for name in day_names}
-
-    for log in logs:
-        weekday_name = day_names[log.date.weekday()]
-        status = log.status if log.status in ('completed', 'skipped', 'missed') else 'completed'
-        day_counts[weekday_name][status] += 1
+    day_counts = {
+        name: {'completed': 0, 'skipped': 0, 'missed': 0, 'total': 0, 'logged': 0}
+        for name in day_names
+    }
+    target_day = start_date
+    while target_day <= today:
+        weekday_name = day_names[target_day.weekday()]
+        for habit in habits:
+            if habit.created_date and target_day < habit.created_date:
+                continue
+            if habit.archived_date and target_day > habit.archived_date:
+                continue
+            if not habit.is_scheduled_for_date(target_day):
+                continue
+            status = log_map.get((habit.id, target_day))
+            if target_day == today and status is None:
+                continue
+            counts = day_counts[weekday_name]
+            counts['total'] += 1
+            if status is not None:
+                counts['logged'] += 1
+            if status == 'completed':
+                counts['completed'] += 1
+            elif status == 'skipped':
+                counts['skipped'] += 1
+            else:
+                # Explicit misses and past unlogged scheduled days both count
+                # as missed opportunities.
+                counts['missed'] += 1
+        target_day += timedelta(days=1)
 
     chart_data = []
     for day in day_names:
         completed = day_counts[day]['completed']
         skipped = day_counts[day]['skipped']
         missed = day_counts[day]['missed']
-        total = completed + skipped + missed
+        total = day_counts[day]['total']
         rate = int((completed / total) * 100) if total > 0 else 0
 
         chart_data.append({
@@ -145,6 +203,7 @@ def get_weekly_completion_data(user_id: int, habit_id: int = None) -> List[Dict[
             'skipped': skipped,
             'missed': missed,
             'total': total,
+            'logged': day_counts[day]['logged'],
             'rate': rate
         })
 
@@ -157,10 +216,10 @@ def get_analytics(current_user: User):
     """
     Returns full dashboard analytics payload including user summary cards,
     habits breakdown, weekly bar chart, 12-month trend line, and behavioral insights.
-    
+
     Args:
         current_user: Authenticated User object.
-        
+
     Returns:
         JSON response with aggregated metrics.
     """
@@ -224,11 +283,11 @@ def get_habit_analytics(current_user: User, habit_id: int):
     """
     Returns deep analytics for a single habit, including streak metrics,
     30-day activity history, 12-month trend, and best performing weekdays.
-    
+
     Args:
         current_user: Authenticated User object.
         habit_id: Habit identifier.
-        
+
     Returns:
         JSON response with detailed habit statistics and chart inputs.
     """
@@ -236,9 +295,18 @@ def get_habit_analytics(current_user: User, habit_id: int):
     if not habit:
         return jsonify({'message': 'Habit not found'}), 404
 
-    history = StreakEngine.get_habit_history(habit.id, current_user.id, days=30)
-    monthly_trend = get_monthly_trend_data(current_user.id, habit_id=habit.id)
-    weekly_breakdown = get_weekly_completion_data(current_user.id, habit_id=habit.id)
+    analysis_end = current_date()
+    if not habit.active and habit.archived_date:
+        analysis_end = min(analysis_end, habit.archived_date)
+    history = StreakEngine.get_habit_history(
+        habit.id, current_user.id, days=30, as_of=analysis_end
+    )
+    monthly_trend = get_monthly_trend_data(
+        current_user.id, habit_id=habit.id, as_of=analysis_end
+    )
+    weekly_breakdown = get_weekly_completion_data(
+        current_user.id, habit_id=habit.id, as_of=analysis_end
+    )
 
     # Format best days for display
     sorted_days = sorted(weekly_breakdown, key=lambda d: d['completed'], reverse=True)
@@ -247,8 +315,26 @@ def get_habit_analytics(current_user: User, habit_id: int):
         for d in sorted_days if d['completed'] > 0
     ]
 
+    habit_data = habit.to_dict()
+    today = current_date()
+    today_log = HabitLog.query.filter_by(
+        habit_id=habit.id,
+        user_id=current_user.id,
+        date=today,
+    ).first()
+    habit_data['today_status'] = today_log.status if today_log else None
+    habit_data['frequency_editable'] = not HabitLog.query.filter_by(
+        habit_id=habit.id,
+        user_id=current_user.id,
+    ).first()
+    habit_data['is_scheduled_today'] = bool(
+        habit.active
+        and (not habit.created_date or today >= habit.created_date)
+        and habit.is_scheduled_for_date(today)
+    )
+
     return jsonify({
-        'habit': habit.to_dict(),
+        'habit': habit_data,
         'stats': {
             'current_streak': StreakEngine.calculate_current_streak(habit.id, current_user.id),
             'longest_streak': StreakEngine.calculate_longest_streak(habit.id, current_user.id),
