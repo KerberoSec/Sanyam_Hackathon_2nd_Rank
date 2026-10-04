@@ -8,7 +8,7 @@ and provisions default achievement badges upon startup.
 
 import os
 from datetime import datetime, timezone
-from flask import Flask, render_template, jsonify, request, current_app, redirect, url_for
+from flask import Flask, render_template, jsonify, request, current_app, redirect
 from flask_cors import CORS
 from werkzeug.middleware.proxy_fix import ProxyFix
 from sqlalchemy import event

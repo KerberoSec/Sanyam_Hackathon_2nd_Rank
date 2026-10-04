@@ -171,6 +171,10 @@ def get_habits(current_user: User):
     """
     habits = Habit.query.filter_by(user_id=current_user.id, active=True).order_by(Habit.created_at.asc()).all()
     today = current_date()
+    today_logs_map = {
+        log.habit_id: log.status
+        for log in HabitLog.query.filter_by(user_id=current_user.id, date=today).all()
+    }
 
     habits_data = []
     for habit in habits:
@@ -181,15 +185,7 @@ def get_habits(current_user: User):
         h_dict['consistency_score'] = StreakEngine.get_consistency_score(habit.id, current_user.id, days=30)
         h_dict['completion_rate'] = StreakEngine.get_completion_rate(habit.id, current_user.id, days=30)
         h_dict['is_scheduled_today'] = habit.is_scheduled_for_date(today)
-
-        # Inspect status for today
-        today_log = HabitLog.query.filter_by(
-            habit_id=habit.id,
-            user_id=current_user.id,
-            date=today
-        ).first()
-        h_dict['today_status'] = today_log.status if today_log else None
-
+        h_dict['today_status'] = today_logs_map.get(habit.id, None)
         habits_data.append(h_dict)
 
     return jsonify({
@@ -226,7 +222,9 @@ def create_habit(current_user: User):
 
     active_count = Habit.query.filter_by(user_id=current_user.id, active=True).count()
     if active_count >= 50:
-        return jsonify({'message': 'Active habit limit reached (maximum 50 habits). Please archive unused habits.'}), 400
+        return jsonify({
+            'message': 'Active habit limit reached (maximum 50 habits). Please archive unused habits.'
+        }), 400
 
     title = data['title'].strip()
     if len(title) < 2 or len(title) > 255:
@@ -353,7 +351,10 @@ def _apply_habit_updates(habit: Habit, data: dict):
             except (TypeError, ValueError):
                 current_frequency = []
         if habit.logs.count() and set(cleaned_frequency) != set(current_frequency or []):
-            return 'Frequency cannot be changed after the habit has logs. Create a new habit to preserve past analytics.'
+            return (
+                'Frequency cannot be changed after the habit has logs. '
+                'Create a new habit to preserve past analytics.'
+            )
         habit.frequency = cleaned_frequency
 
     if 'active' in data:
@@ -363,7 +364,10 @@ def _apply_habit_updates(habit: Habit, data: dict):
             habit.archived_date = current_date()
         elif not habit.active and data['active']:
             if habit.logs.count():
-                return 'An archived habit with history cannot be reactivated. Create a new habit to start another schedule.'
+                return (
+                    'An archived habit with history cannot be reactivated. '
+                    'Create a new habit to start another schedule.'
+                )
             habit.created_date = current_date()
             habit.archived_date = None
         habit.active = data['active']
@@ -524,8 +528,12 @@ def complete_habit(current_user: User, habit_id: int):
     if gamification_result['xp_result'] is None:
         latest_log = db.session.get(HabitLog, log.id)
         if latest_log and latest_log.status != 'completed':
-            return jsonify({'message': 'This habit log changed during another request. Refresh and try again.'}), 409
-        return jsonify({'message': 'Completion was saved but XP could not be recorded. Retry this action to reconcile it.'}), 500
+            return jsonify({
+                'message': 'This habit log changed during another request. Refresh and try again.'
+            }), 409
+        return jsonify({
+            'message': 'Completion was saved but XP could not be recorded. Retry this action to reconcile it.'
+        }), 500
 
     # Generate milestone celebration message
     streak_msg = CoachEngine.get_streak_milestone_message(habit.id, current_user.id, streak_at_target)
@@ -607,8 +615,12 @@ def skip_habit(current_user: User, habit_id: int):
     if reward['xp_result'] is None:
         latest_log = db.session.get(HabitLog, log.id)
         if latest_log and latest_log.status != 'skipped':
-            return jsonify({'message': 'This habit log changed during another request. Refresh and try again.'}), 409
-        return jsonify({'message': 'Skip was saved but XP could not be recorded. Retry this action to reconcile it.'}), 500
+            return jsonify({
+                'message': 'This habit log changed during another request. Refresh and try again.'
+            }), 409
+        return jsonify({
+            'message': 'Skip was saved but XP could not be recorded. Retry this action to reconcile it.'
+        }), 500
 
     return jsonify({
         'message': 'Habit skipped. Your streak is preserved!',

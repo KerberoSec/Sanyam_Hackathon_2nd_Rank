@@ -17,7 +17,7 @@ from typing import Callable, Any, Optional
 from urllib.parse import quote
 
 import jwt
-from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
+from itsdangerous import URLSafeTimedSerializer
 from flask import Blueprint, request, jsonify, session, current_app
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
@@ -25,7 +25,6 @@ from sqlalchemy.dialects.mysql import insert as mysql_insert
 from sqlalchemy.dialects.postgresql import insert as postgresql_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from models import User, RateLimitBucket, db
-from werkzeug.security import generate_password_hash
 
 # Create auth blueprint with standard URL prefix
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
@@ -596,7 +595,6 @@ def logout(current_user: User):
         db.session.rollback()
         current_app.logger.exception('Logout token revocation failed')
         return jsonify({'message': 'Could not complete logout. Please try again.'}), 500
-    resp = jsonify({'message': 'Logout successful. Token invalidated.'})
     resp = jsonify({'message': 'Logout successful. Token invalidated.'})
     resp.delete_cookie('auth_token')
     return resp, 200

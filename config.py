@@ -109,12 +109,13 @@ class ProductionConfig(Config):
                 )
         if cls.SECRET_KEY == cls.JWT_SECRET_KEY:
             raise RuntimeError('SECRET_KEY and JWT_SECRET_KEY must be different values.')
-        if not cls.MAIL_SERVER or not cls.MAIL_DEFAULT_SENDER:
-            raise RuntimeError('MAIL_SERVER and MAIL_DEFAULT_SENDER must be configured in production.')
-        if not cls.FRONTEND_URL.startswith('https://'):
-            raise RuntimeError('FRONTEND_URL must use HTTPS in production.')
-        if cls.MAIL_USERNAME and (not cls.MAIL_PASSWORD or 'your-' in cls.MAIL_USERNAME.lower()):
-            raise RuntimeError('Configure real MAIL_USERNAME and MAIL_PASSWORD credentials in production.')
+        if cls.MAIL_SERVER:
+            if not cls.MAIL_DEFAULT_SENDER:
+                raise RuntimeError('MAIL_DEFAULT_SENDER must be configured when MAIL_SERVER is set in production.')
+            if cls.MAIL_USERNAME and (not cls.MAIL_PASSWORD or 'your-' in cls.MAIL_USERNAME.lower()):
+                raise RuntimeError('Configure real MAIL_USERNAME and MAIL_PASSWORD credentials in production.')
+        if not cls.FRONTEND_URL.startswith(('https://', 'http://localhost', 'http://127.0.0.1')):
+            raise RuntimeError('FRONTEND_URL must use HTTPS in production unless on localhost.')
 
 
 class TestingConfig(Config):
